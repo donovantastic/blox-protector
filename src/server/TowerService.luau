@@ -61,6 +61,8 @@ local GRAYBOX: { [string]: Color3 } = {
 	Paintball = Color3.fromRGB(255, 95, 200), -- hot pink — matches the paint splatter
 	Superball = Color3.fromRGB(120, 235, 90), -- bouncy lime rubber ball
 	Drill = Color3.fromRGB(255, 140, 40), -- molten-orange industrial drill
+	Trowel = Color3.fromRGB(170, 70, 55), -- brick red
+	Summoner = Color3.fromRGB(70, 140, 240), -- friendly-pin blue
 }
 
 -- A custom graybox for the Drill: a tiered metal cone (a stack of discs that shrink
@@ -423,6 +425,13 @@ function TowerService.step(dt: number)
 		if tower.def.wall then
 			fireWall(tower, enemies) -- area damage, no aiming/targeting
 			continue
+		end
+		if tower.def.summon then
+			if tower.cooldown <= 0 then
+				EnemyService.spawnAlly(level(tower).damage, tower.position)
+				tower.cooldown = 1 / tower.def.fireRate
+			end
+			continue -- spawns friendly pins; never aims/shoots
 		end
 		local target = pickTarget(tower, enemies)
 		if target then

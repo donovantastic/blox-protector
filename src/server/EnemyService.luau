@@ -31,6 +31,17 @@ export type Enemy = {
 	abilityCooldown: number, -- seconds left before this enemy can use its drill ability again
 }
 
+-- A friendly pin summoned by the Pin Factory tower: walks the track the WRONG way
+-- (toward the enemy spawn) and rams the first enemy it meets.
+type Ally = {
+	model: Model,
+	primary: BasePart,
+	waypointIndex: number, -- counts DOWN toward the enemy spawn (path[1])
+	speed: number,
+	damage: number,
+	dead: boolean,
+}
+
 local EnemyService = {}
 
 -- callbacks wired in init.server
@@ -38,9 +49,15 @@ EnemyService.onLeak = function(_enemy: Enemy) end :: (Enemy) -> ()
 EnemyService.onDeath = function(_enemy: Enemy) end :: (Enemy) -> ()
 
 local active: { Enemy } = {}
+local allies: { Ally } = {}
 local nextId = 0
 local container: Folder
 local frozenUntil = 0 -- Defrag card: all enemies stop moving until this clock time
+
+-- Friendly pins (allies) are blue, charge fast, and ram anything within this radius.
+local ALLY_COLOR = Color3.fromRGB(70, 140, 240)
+local ALLY_SPEED = 16
+local ALLY_RAM_RADIUS = 5
 
 -- The pink an enemy turns while it's covered in paint (mixed with its own color so
 -- you can still tell enemies apart). Purely visual — it's how you SEE the slow working.
@@ -58,12 +75,16 @@ local GRAYBOX_COLORS: { [string]: Color3 } = {
 -- smug face and a little steel drill-spike on top. Everything is built around the
 -- body (the PrimaryPart) at the local origin; the movement loop pivots the whole
 -- model, so all of these parts travel together.
-local function buildPinEnemy(def: Enemies.Enemy): (Model, BasePart)
-	local RED = Color3.fromRGB(225, 35, 35)
+local function buildPinEnemy(
+	modelName: string,
+	scale: number?,
+	bodyColor: Color3?
+): (Model, BasePart)
+	local RED = bodyColor or Color3.fromRGB(225, 35, 35) -- enemies red; friendly allies pass blue
 	local BLACK = Color3.fromRGB(20, 20, 22)
 	local STEEL = Color3.fromRGB(150, 165, 195)
 	local model = Instance.new("Model")
-	model.Name = def.model
+	model.Name = modelName
 
 	local function piece(
 		name: string,
@@ -230,8 +251,8 @@ local function buildPinEnemy(def: Enemies.Enemy): (Model, BasePart)
 	model.PrimaryPart = body
 	-- grow the whole model as one (bosses are big). ScaleTo scales every part around
 	-- the pivot, so the proportions stay exactly the same — just bigger.
-	if def.scale then
-		model:ScaleTo(def.scale)
+	if scale then
+		model:ScaleTo(scale)
 	end
 	return model, body
 end
@@ -254,7 +275,7 @@ local function buildModel(def: Enemies.Enemy): (Model, BasePart)
 
 	-- the Push-Pin gets a hand-built multi-part graybox instead of a plain box
 	if def.model == "Pin" then
-		return buildPinEnemy(def)
+		return buildPinEnemy(def.model, def.scale)
 	end
 
 	-- graybox fallback
@@ -452,6 +473,91 @@ function EnemyService.knockback(enemy: Enemy, studs: number)
 	enemy.model:PivotTo(facing + (pos + Vector3.new(0, half, 0)))
 end
 
+-- Spawn a FRIENDLY pin near `nearPosition` that charges UP the track (toward the
+-- enemy spawn) and rams the first enemy it meets for `damage`. Used by the Pin
+-- Factory tower. The ally is "used up" the moment it rams something.
+function EnemyService.spawnAlly(damage: number, nearPosition: Vector3)
+	local path = Map.getPath()
+	if #path < 2 then
+		return
+	end
+	-- start it at the path point closest to the summoning tower
+	local startIdx = 1
+	local bestD = math.huge
+	for i, wp in path do
+		local d = (wp - nearPosition).Magnitude
+		if d < bestD then
+			bestD = d
+			startIdx = i
+		end
+	end
+	local model, primary = buildPinEnemy("AllyPin", 0.9, ALLY_COLOR)
+	local ally: Ally = {
+		model = model,
+		primary = primary,
+		waypointIndex = startIdx - 1, -- head toward the enemy spawn
+		speed = ALLY_SPEED,
+		damage = damage,
+		dead = false,
+	}
+	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
+	model.Parent = container
+	table.insert(allies, ally)
+end
+
+-- Move the friendly pins up the track; ram (and spend themselves on) the first
+-- enemy they touch.
+local function stepAllies(dt: number)
+	local path = Map.getPath()
+	for i = #allies, 1, -1 do
+		local ally = allies[i]
+		if ally.dead then
+			table.remove(allies, i)
+			continue
+		end
+
+		local rammed = false
+		for _, enemy in active do
+			local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+			if not enemy.dead and d <= ALLY_RAM_RADIUS then
+				EnemyService.takeDamage(enemy, ally.damage)
+				rammed = true
+				break
+			end
+		end
+		if rammed then
+			deathPop(ally.primary.Position, ALLY_COLOR)
+			ally.model:Destroy()
+			table.remove(allies, i)
+			continue
+		end
+
+		local target = path[ally.waypointIndex]
+		if not target then
+			ally.model:Destroy() -- reached the spawn without a kill — spent
+			table.remove(allies, i)
+			continue
+		end
+		local pos = ally.primary.Position - Vector3.new(0, ally.primary.Size.Y / 2, 0)
+		local toTarget = target - pos
+		local distLeft = toTarget.Magnitude
+		local stepDist = ally.speed * dt
+		local newGround: Vector3
+		if stepDist >= distLeft then
+			newGround = target
+			ally.waypointIndex -= 1
+		else
+			newGround = pos + toTarget.Unit * stepDist
+		end
+		local newPos = newGround + Vector3.new(0, ally.primary.Size.Y / 2, 0)
+		if distLeft > 0.001 then
+			ally.model:PivotTo(CFrame.lookAt(newPos, newPos + toTarget.Unit))
+		else
+			ally.model:PivotTo(CFrame.new(newPos))
+		end
+	end
+end
+
 -- Move every active enemy one frame along the path.
 function EnemyService.step(dt: number)
 	local path = Map.getPath()
@@ -511,6 +617,7 @@ function EnemyService.step(dt: number)
 			enemy.model:PivotTo(CFrame.new(newPos))
 		end
 	end
+	stepAllies(dt) -- friendly pins march the other way
 end
 
 -- For TowerService targeting.

@@ -38,6 +38,9 @@ export type Tower = {
 	-- of shooting one enemy it damages EVERY enemy inside its `range` each tick (so
 	-- enemies take damage as they pass through). `damage` = per tick, `fireRate` = ticks/sec.
 	wall: boolean?,
+	-- optional: a "summon" tower spawns friendly pins that charge UP the lane and ram
+	-- enemies. `fireRate` = pins per second, `damage` = the ram damage of each pin.
+	summon: boolean?,
 }
 
 local Towers: { [string]: Tower } = {
@@ -155,6 +158,22 @@ local Towers: { [string]: Tower } = {
 			{ range = 6, damage = 4, cost = 90 },
 			{ range = 7, damage = 7, cost = 140 },
 			{ range = 8, damage = 12, cost = 230 },
+		},
+	},
+
+	Summoner = {
+		name = "Pin Factory",
+		desc = "Stamps out friendly blue push-pins that charge UP the lane and kamikaze-ram the corruption.",
+		model = "Summoner",
+		cost = 120,
+		placementRadius = 4,
+		fireRate = 0.5, -- one friendly pin every 2 seconds
+		targeting = "first", -- unused for summoners, but required
+		summon = true, -- spawns friendly pins instead of shooting
+		levels = {
+			{ range = 0, damage = 30, cost = 120 }, -- damage = each pin's ram hit
+			{ range = 0, damage = 50, cost = 190 },
+			{ range = 0, damage = 85, cost = 320 },
 		},
 	},
 
