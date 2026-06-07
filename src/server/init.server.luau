@@ -71,6 +71,36 @@ if gate and gate:IsA("BasePart") then
 	end)
 end
 
+-- start each player in the right place for the current mode (backstop vs spawn picks)
+local function placeCharacter(char: Model)
+	if ModeService.get() == "Gauntlet" then
+		char:PivotTo(CFrame.new(0, 6, 55))
+	else
+		local s = Workspace:FindFirstChild("ExploreStage")
+		local sp = s and s:FindFirstChild("ExploreSpawn")
+		local pos = if sp and sp:IsA("BasePart")
+			then sp.Position + Vector3.new(0, 4, 0)
+			else Vector3.new(-152, 5, 0)
+		char:PivotTo(CFrame.new(pos))
+	end
+end
+local function hookPlayer(plr: Player)
+	plr.CharacterAdded:Connect(function(char)
+		task.wait(0.3)
+		placeCharacter(char)
+	end)
+	if plr.Character then
+		task.spawn(function()
+			task.wait(0.3)
+			placeCharacter(plr.Character :: Model)
+		end)
+	end
+end
+Players.PlayerAdded:Connect(hookPlayer)
+for _, plr in Players:GetPlayers() do
+	hookPlayer(plr)
+end
+
 -- tower remotes (validate types; reject + Notify on failure)
 local notify = Remotes.event("Notify")
 local function report(player: Player, ok: boolean, reason: string)

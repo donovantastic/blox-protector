@@ -61,6 +61,14 @@ function ExploreStage.ensure()
 	spawn.Color = Color3.fromRGB(90, 200, 120)
 	spawn.Parent = stage
 
+	-- make this the ONLY spawn (drop the place's default Baseplate spawn so the
+	-- player always starts on the lane, not at the gauntlet map)
+	for _, inst in Workspace:GetDescendants() do
+		if inst:IsA("SpawnLocation") and inst ~= spawn then
+			inst:Destroy()
+		end
+	end
+
 	local npc = block(
 		"Builderman",
 		CFrame.new(-120, 3.5, 0),
