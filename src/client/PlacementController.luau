@@ -74,8 +74,10 @@ local function buildGhost(towerType: string, def: Towers.Tower)
 end
 
 local function groundPoint(): Vector3?
+	-- exclude the Map (Spawn/Base/waypoint blocks) so the ray hits the ground, not
+	-- a raised block — otherwise the tower spawns floating on top of it
 	local filter: { Instance } = { ghostFolder }
-	for _, name in { "Enemies", "Tracers", "Towers" } do
+	for _, name in { "Enemies", "Tracers", "Towers", "Map" } do
 		local f = Workspace:FindFirstChild(name)
 		if f then
 			table.insert(filter, f)

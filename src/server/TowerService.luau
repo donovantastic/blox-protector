@@ -88,7 +88,7 @@ local function buildTower(
 	turret.Anchored = true
 	turret.CanCollide = false
 	turret.Size = Vector3.new(1.6, 1.6, 3) -- LookVector (-Z) is the barrel
-	turret.Position = position + Vector3.new(0, 2.2, 0)
+	turret.Position = position + Vector3.new(0, 1.8, 0) -- sits on the base (no gap)
 	turret.Color = color
 	turret.Material = Enum.Material.SmoothPlastic
 	turret.Parent = model

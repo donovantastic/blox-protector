@@ -262,7 +262,9 @@ function DialogueController.init()
 	skipBtn.BackgroundColor3 = Color3.fromRGB(245, 196, 63)
 	skipBtn.Font = Enum.Font.GothamBlack
 	skipBtn.TextSize = 18
-	skipBtn.TextColor3 = Color3.fromRGB(28, 28, 34)
+	skipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	skipBtn.TextStrokeColor3 = Color3.fromRGB(20, 20, 26)
+	skipBtn.TextStrokeTransparency = 0
 	skipBtn.Text = "SKIP  ▶▶"
 	skipBtn.ZIndex = 6
 	addCorner(skipBtn, 10)
