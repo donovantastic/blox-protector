@@ -6,6 +6,28 @@ export type Line = { speaker: string, mood: string, text: string }
 export type Sequence = { Line }
 
 local Dialogue: { [string]: Sequence } = {
+	explore_intro = {
+		{
+			speaker = "Builderman",
+			mood = "Happy",
+			text = "Welcome to the Crossroads, Moderator! Or... what's left of it.",
+		},
+		{
+			speaker = "Builderman",
+			mood = "Neutral",
+			text = "The corruption's dug in past that glowing gate down the lane.",
+		},
+		{
+			speaker = "Builderman",
+			mood = "Serious",
+			text = "Walk over when you're ready — but step through and there's no backing out.",
+		},
+		{
+			speaker = "Builderman",
+			mood = "Excited",
+			text = "It locks down and throws everything at you. Hold the line, the door opens. Go!",
+		},
+	},
 	intro = {
 		{
 			speaker = "Builderman",

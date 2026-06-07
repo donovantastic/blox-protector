@@ -13,6 +13,7 @@ local EVENTS = {
 	"Notify", -- (message: string) small toast
 	"PlayDialogue", -- (sequenceKey: string) play a Dialogue[key] sequence
 	"ShowCard", -- (kind: string, data: table) title / end card
+	"ModeChanged", -- (mode: string) "Explore" | "Gauntlet" | "ChapterComplete"
 	-- client -> server
 	"PlaceTower",
 	"UpgradeTower",

@@ -22,6 +22,9 @@ local playDialogue = Remotes.event("PlayDialogue")
 local showCard = Remotes.event("ShowCard")
 local notify = Remotes.event("Notify") -- mid-wave beats use the NON-blocking toast
 
+-- set by init.server: fired when the gauntlet ends (won = survived all waves)
+WaveManager.onComplete = function(_won: boolean) end :: (boolean) -> ()
+
 -- called by init.server when a client reports the intro sequence finished
 function WaveManager.markIntroDone()
 	introDone = true
@@ -101,6 +104,7 @@ function WaveManager.start()
 			task.wait(2.5)
 			showCard:FireAllClients("end", chapter.endCard)
 		end
+		WaveManager.onComplete(GameState.getStatus() == "won")
 		print("[Chapter] ended:", GameState.getStatus())
 	end)
 end

@@ -95,7 +95,7 @@ local function requestAdvance()
 	end
 end
 
-local function playSequence(sequenceKey: string)
+local function playSequence(sequenceKey: string, fireDone: boolean)
 	if playing then
 		return
 	end
@@ -130,8 +130,15 @@ local function playSequence(sequenceKey: string)
 		playing = false
 		typing = false
 		revealRequested = false
-		Remotes.event("DialogueDone"):FireServer()
+		if fireDone then
+			Remotes.event("DialogueDone"):FireServer()
+		end
 	end
+end
+
+-- Public: play a sequence locally (NPC chats) without signalling DialogueDone.
+function DialogueController.play(sequenceKey: string)
+	playSequence(sequenceKey, false)
 end
 
 local function addCorner(parent: Instance, radius: number)
@@ -248,7 +255,7 @@ function DialogueController.init()
 	end)
 
 	Remotes.event("PlayDialogue").OnClientEvent:Connect(function(sequenceKey)
-		playSequence(tostring(sequenceKey))
+		playSequence(tostring(sequenceKey), true)
 	end)
 end
 
