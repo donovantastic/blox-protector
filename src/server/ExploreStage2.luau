@@ -105,18 +105,13 @@ function ExploreStage2.ensure()
 		"Stickmasterluke",
 		{ Dialogue = "act2_hotfix", GivesCard = "hotfix", AvatarUserId = 80254 }
 	)
-	npc(
-		stage,
-		CX + 26,
-		"Merchant",
-		{
-			Dialogue = "act2_merchant",
-			IsMerchant = true,
-			SellsTower = "Sword",
-			Price = 100,
-			AvatarUserId = 505306,
-		}
-	)
+	npc(stage, CX + 26, "Merchant", {
+		Dialogue = "act2_merchant",
+		IsMerchant = true,
+		SellsTower = "Sword",
+		Price = 100,
+		AvatarUserId = 505306,
+	})
 
 	-- parkour climb up to a hidden card (off the main flow, before the gate)
 	local px = CX + 40
