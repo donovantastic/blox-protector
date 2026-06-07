@@ -40,6 +40,13 @@ end
 -- mode flow: entering the gauntlet starts the waves; surviving completes the chapter
 ModeService.onChange = function(mode)
 	if mode == "Gauntlet" then
+		-- move players to a vantage over the gauntlet map (free 3D camera takes over)
+		for _, plr in Players:GetPlayers() do
+			local char = plr.Character
+			if char then
+				char:PivotTo(CFrame.new(0, 6, 55))
+			end
+		end
 		WaveManager.start()
 	end
 end

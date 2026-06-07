@@ -172,6 +172,7 @@ function PlacementController.init()
 		elseif
 			input.UserInputType == Enum.UserInputType.MouseButton2
 			or input.KeyCode == Enum.KeyCode.Escape
+			or input.KeyCode == Enum.KeyCode.Q
 		then
 			ClientState.setSelected(nil)
 		end

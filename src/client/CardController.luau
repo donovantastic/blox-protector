@@ -173,4 +173,113 @@ function CardController.init()
 	end)
 end
 
+-- ---- card-grant reveal (an NPC hands you a card) ------------------------------
+local revealGui: ScreenGui?
+local revealCard: Frame
+local revealName: TextLabel
+local revealDesc: TextLabel
+local revealRarity: TextLabel
+
+local function buildReveal()
+	local player = Players.LocalPlayer
+	local g = Instance.new("ScreenGui")
+	g.Name = "CardReveal"
+	g.ResetOnSpawn = false
+	g.IgnoreGuiInset = true
+	g.DisplayOrder = 90
+	g.Enabled = false
+	g.Parent = player:WaitForChild("PlayerGui")
+	revealGui = g
+
+	local dim = Instance.new("TextButton")
+	dim.Size = UDim2.fromScale(1, 1)
+	dim.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	dim.BackgroundTransparency = 0.4
+	dim.AutoButtonColor = false
+	dim.Text = ""
+	dim.Parent = g
+	dim.Activated:Connect(function()
+		g.Enabled = false
+	end)
+
+	revealCard = Instance.new("Frame")
+	revealCard.AnchorPoint = Vector2.new(0.5, 0.5)
+	revealCard.Position = UDim2.fromScale(0.5, 0.46)
+	revealCard.Size = UDim2.fromOffset(300, 420)
+	revealCard.BackgroundColor3 = Color3.fromRGB(248, 248, 244)
+	revealCard.Parent = g
+	addCorner(revealCard, 16)
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 5
+	stroke.Color = Color3.fromRGB(245, 196, 63)
+	stroke.Parent = revealCard
+
+	revealRarity = Instance.new("TextLabel")
+	revealRarity.Position = UDim2.fromOffset(0, 16)
+	revealRarity.Size = UDim2.new(1, 0, 0, 22)
+	revealRarity.BackgroundTransparency = 1
+	revealRarity.Font = Enum.Font.GothamBlack
+	revealRarity.TextSize = 15
+	revealRarity.TextColor3 = Color3.fromRGB(200, 150, 30)
+	revealRarity.Parent = revealCard
+
+	revealName = Instance.new("TextLabel")
+	revealName.Position = UDim2.fromOffset(12, 40)
+	revealName.Size = UDim2.new(1, -24, 0, 40)
+	revealName.BackgroundTransparency = 1
+	revealName.Font = Enum.Font.GothamBlack
+	revealName.TextSize = 28
+	revealName.TextColor3 = Color3.fromRGB(30, 32, 40)
+	revealName.Parent = revealCard
+
+	local art = Instance.new("Frame")
+	art.AnchorPoint = Vector2.new(0.5, 0)
+	art.Position = UDim2.new(0.5, 0, 0, 92)
+	art.Size = UDim2.fromOffset(252, 170)
+	art.BackgroundColor3 = Color3.fromRGB(40, 46, 74)
+	art.BorderSizePixel = 0
+	addCorner(art, 10)
+	art.Parent = revealCard
+
+	revealDesc = Instance.new("TextLabel")
+	revealDesc.Position = UDim2.new(0.5, 0, 0, 274)
+	revealDesc.AnchorPoint = Vector2.new(0.5, 0)
+	revealDesc.Size = UDim2.fromOffset(256, 96)
+	revealDesc.BackgroundTransparency = 1
+	revealDesc.Font = Enum.Font.GothamMedium
+	revealDesc.TextSize = 15
+	revealDesc.TextColor3 = Color3.fromRGB(60, 64, 78)
+	revealDesc.TextWrapped = true
+	revealDesc.Parent = revealCard
+
+	local tap = Instance.new("TextLabel")
+	tap.AnchorPoint = Vector2.new(0.5, 1)
+	tap.Position = UDim2.new(0.5, 0, 1, -10)
+	tap.Size = UDim2.fromOffset(280, 20)
+	tap.BackgroundTransparency = 1
+	tap.Font = Enum.Font.GothamBold
+	tap.TextSize = 14
+	tap.TextColor3 = Color3.fromRGB(150, 120, 30)
+	tap.Text = "New card!  —  click to continue"
+	tap.Parent = revealCard
+end
+
+-- Show a "you got a card" reveal. `card` = a Cards.Card.
+function CardController.reveal(card: any)
+	if not revealGui then
+		buildReveal()
+	end
+	local g = revealGui :: ScreenGui
+	revealRarity.Text = string.upper(tostring(card.rarity)) .. " CARD"
+	revealName.Text = tostring(card.name)
+	revealDesc.Text = tostring(card.desc)
+	g.Enabled = true
+	revealCard.Size = UDim2.fromOffset(120, 168)
+	TweenService:Create(
+		revealCard,
+		TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Size = UDim2.fromOffset(300, 420) }
+	):Play()
+end
+
 return CardController

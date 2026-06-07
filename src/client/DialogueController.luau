@@ -95,7 +95,7 @@ local function requestAdvance()
 	end
 end
 
-local function playSequence(sequenceKey: string, fireDone: boolean)
+local function playSequence(sequenceKey: string, fireDone: boolean, onDone: (() -> ())?)
 	if playing then
 		return
 	end
@@ -133,12 +133,16 @@ local function playSequence(sequenceKey: string, fireDone: boolean)
 		if fireDone then
 			Remotes.event("DialogueDone"):FireServer()
 		end
+		if onDone then
+			onDone()
+		end
 	end
 end
 
 -- Public: play a sequence locally (NPC chats) without signalling DialogueDone.
-function DialogueController.play(sequenceKey: string)
-	playSequence(sequenceKey, false)
+-- `onDone` fires when the sequence finishes (used to grant cards, etc.).
+function DialogueController.play(sequenceKey: string, onDone: (() -> ())?)
+	playSequence(sequenceKey, false, onDone)
 end
 
 local function addCorner(parent: Instance, radius: number)
@@ -171,7 +175,7 @@ function DialogueController.init()
 	box = Instance.new("Frame")
 	box.Name = "DialogueBox"
 	box.AnchorPoint = Vector2.new(0.5, 1)
-	box.Position = UDim2.new(0.5, 0, 1, -138)
+	box.Position = UDim2.new(0.5, 0, 1, -24)
 	box.Size = UDim2.fromOffset(720, 150)
 	box.BackgroundColor3 = Color3.fromRGB(250, 250, 245)
 	box.Visible = false

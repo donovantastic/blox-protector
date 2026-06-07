@@ -70,6 +70,7 @@ function ExploreStage.ensure()
 	)
 	npc.CanCollide = false
 	npc:SetAttribute("Dialogue", "explore_intro")
+	npc:SetAttribute("GivesCard", "rollback")
 	CollectionService:AddTag(npc, "NPC")
 	local bg = Instance.new("BillboardGui")
 	bg.Adornee = npc

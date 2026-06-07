@@ -12,21 +12,30 @@ local Dialogue: { [string]: Sequence } = {
 			mood = "Happy",
 			text = "Welcome to the Crossroads, Moderator! Or... what's left of it.",
 		},
+		{ speaker = "You", mood = "Shocked", text = "Whoa. It's so... SHINY. What happened here?" },
 		{
 			speaker = "Builderman",
-			mood = "Neutral",
-			text = "The corruption's dug in past that glowing gate down the lane.",
+			mood = "Angry",
+			text = "The Moderns happened. The Great Smoothing — 'updating' the old world into a textured void.",
 		},
+		{ speaker = "You", mood = "Neutral", text = "Okay. So how do I push them back?" },
 		{
 			speaker = "Builderman",
 			mood = "Serious",
-			text = "Walk over when you're ready — but step through and there's no backing out.",
+			text = "The corruption's massed up past that glowing gate down the lane.",
+		},
+		{ speaker = "You", mood = "Neutral", text = "And I just... walk through?" },
+		{
+			speaker = "Builderman",
+			mood = "Neutral",
+			text = "Once you step through, it locks down. Wave after wave until you clear the path.",
 		},
 		{
 			speaker = "Builderman",
-			mood = "Excited",
-			text = "It locks down and throws everything at you. Hold the line, the door opens. Go!",
+			mood = "Happy",
+			text = "But take this first — an old debugging tool. Should pack a punch when things get hairy.",
 		},
+		{ speaker = "You", mood = "Excited", text = "A card? Neat. Let's go save the server." },
 	},
 	intro = {
 		{
