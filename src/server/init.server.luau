@@ -114,6 +114,7 @@ local function powerOnGate(gatePart: BasePart)
 	snd.Parent = gatePart
 
 	task.spawn(function()
+		task.wait(0.55) -- let the client's cutscene camera arrive at the gate first
 		for _ = 1, 3 do
 			gatePart.Transparency = 0.75
 			task.wait(0.07)

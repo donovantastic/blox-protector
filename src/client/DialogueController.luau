@@ -256,21 +256,21 @@ function DialogueController.init()
 
 	local skipBtn = Instance.new("TextButton")
 	skipBtn.Name = "Skip"
-	skipBtn.AnchorPoint = Vector2.new(1, 0)
-	skipBtn.Position = UDim2.new(1, -12, 0, -28)
-	skipBtn.Size = UDim2.fromOffset(92, 26)
-	skipBtn.BackgroundColor3 = Color3.fromRGB(38, 40, 50)
-	skipBtn.Font = Enum.Font.GothamBold
-	skipBtn.TextSize = 14
-	skipBtn.TextColor3 = Color3.fromRGB(220, 222, 230)
-	skipBtn.Text = "Skip  ⏭"
-	skipBtn.ZIndex = 5
-	addCorner(skipBtn, 6)
+	skipBtn.AnchorPoint = Vector2.new(1, 1)
+	skipBtn.Position = UDim2.new(1, -20, 1, -20)
+	skipBtn.Size = UDim2.fromOffset(140, 42)
+	skipBtn.BackgroundColor3 = Color3.fromRGB(245, 196, 63)
+	skipBtn.Font = Enum.Font.GothamBlack
+	skipBtn.TextSize = 18
+	skipBtn.TextColor3 = Color3.fromRGB(28, 28, 34)
+	skipBtn.Text = "SKIP  ▶▶"
+	skipBtn.ZIndex = 6
+	addCorner(skipBtn, 10)
 	local skipStroke = Instance.new("UIStroke")
 	skipStroke.Thickness = 3
 	skipStroke.Color = Color3.fromRGB(28, 28, 34)
 	skipStroke.Parent = skipBtn
-	skipBtn.Parent = box
+	skipBtn.Parent = gui
 	skipBtn.Activated:Connect(function()
 		if playing then
 			skipRequested = true

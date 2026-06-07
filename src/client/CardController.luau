@@ -180,6 +180,7 @@ local revealCard: Frame
 local revealName: TextLabel
 local revealDesc: TextLabel
 local revealRarity: TextLabel
+local revealOnDone: (() -> ())? = nil
 
 local function buildReveal()
 	local player = Players.LocalPlayer
@@ -201,6 +202,11 @@ local function buildReveal()
 	dim.Parent = g
 	dim.Activated:Connect(function()
 		g.Enabled = false
+		local f = revealOnDone
+		revealOnDone = nil
+		if f then
+			f()
+		end
 	end)
 
 	revealCard = Instance.new("Frame")
@@ -265,11 +271,12 @@ local function buildReveal()
 	tap.Parent = revealCard
 end
 
--- Show a "you got a card" reveal. `card` = a Cards.Card.
-function CardController.reveal(card: any)
+-- Show a "you got a card" reveal. `card` = a Cards.Card. `onDone` fires on dismiss.
+function CardController.reveal(card: any, onDone: (() -> ())?)
 	if not revealGui then
 		buildReveal()
 	end
+	revealOnDone = onDone
 	SoundController.play("cardReveal")
 	local g = revealGui :: ScreenGui
 	revealRarity.Text = string.upper(tostring(card.rarity)) .. " CARD"
