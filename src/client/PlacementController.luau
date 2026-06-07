@@ -27,7 +27,7 @@ local GREEN = Color3.fromRGB(80, 220, 120)
 local RED = Color3.fromRGB(230, 90, 90)
 
 local ghostFolder: Folder
-type Ghost = { base: BasePart, turret: BasePart, disc: BasePart, towerType: string }
+type Ghost = { base: BasePart, turret: BasePart, disc: BasePart, towerType: string, wall: boolean }
 local ghost: Ghost? = nil
 local lastValid = false
 local lastPos: Vector3? = nil
@@ -49,7 +49,10 @@ local function buildGhost(towerType: string, def: Towers.Tower)
 	base.CanCollide = false
 	base.Transparency = 0.45
 	base.Material = Enum.Material.SmoothPlastic
-	base.Size = Vector3.new(def.placementRadius * 1.6, 1, def.placementRadius * 1.6)
+	-- a wall ghost is a wide slab; a normal tower ghost is a square footprint
+	base.Size = if def.wall
+		then Vector3.new(11, 5, 1.4)
+		else Vector3.new(def.placementRadius * 1.6, 1, def.placementRadius * 1.6)
 	base.Parent = ghostFolder
 
 	local turret = Instance.new("Part")
@@ -70,7 +73,13 @@ local function buildGhost(towerType: string, def: Towers.Tower)
 	disc.Size = Vector3.new(0.2, range * 2, range * 2)
 	disc.Parent = ghostFolder
 
-	ghost = { base = base, turret = turret, disc = disc, towerType = towerType }
+	ghost = {
+		base = base,
+		turret = turret,
+		disc = disc,
+		towerType = towerType,
+		wall = def.wall == true,
+	}
 end
 
 local function groundPoint(): Vector3?
@@ -98,7 +107,13 @@ local function isValid(def: Towers.Tower, pos: Vector3): boolean
 		return false
 	end
 	local waypoints = PathUtil.getWaypoints(map)
-	if PathUtil.distanceToPath(waypoints, pos) < (Balance.PathClearance + def.placementRadius) then
+	local distToPath = PathUtil.distanceToPath(waypoints, pos)
+	if def.wall then
+		-- a wall must be ON the path, not beside it
+		if distToPath > Balance.WallMaxDist then
+			return false
+		end
+	elseif distToPath < (Balance.PathClearance + def.placementRadius) then
 		return false
 	end
 	local towersFolder = Workspace:FindFirstChild("Towers")
@@ -147,15 +162,24 @@ local function update()
 	lastValid = isValid(def, pos)
 	local tint = if lastValid then GREEN else RED
 
-	g.base.Transparency = 0.45
-	g.turret.Transparency = 0.45
 	g.disc.Transparency = 0.78
-	g.base.Color = tint
-	g.turret.Color = tint
 	g.disc.Color = tint
-	g.base.Position = pos + Vector3.new(0, 0.5, 0)
-	g.turret.CFrame = CFrame.new(pos + Vector3.new(0, 2.2, 0))
 	g.disc.CFrame = CFrame.new(pos + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.rad(90))
+
+	if g.wall then
+		-- wall preview: a tall slab on the lane, no turret
+		g.base.Transparency = 0.4
+		g.base.Color = tint
+		g.base.Position = pos + Vector3.new(0, g.base.Size.Y / 2, 0)
+		g.turret.Transparency = 1
+	else
+		g.base.Transparency = 0.45
+		g.turret.Transparency = 0.45
+		g.base.Color = tint
+		g.turret.Color = tint
+		g.base.Position = pos + Vector3.new(0, 0.5, 0)
+		g.turret.CFrame = CFrame.new(pos + Vector3.new(0, 2.2, 0))
+	end
 end
 
 function PlacementController.init()

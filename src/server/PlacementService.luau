@@ -33,7 +33,12 @@ function PlacementService.validate(
 	if cash < def.cost then
 		return false, "Not enough cash"
 	end
-	if Map.distanceToPath(position) < (Balance.PathClearance + def.placementRadius) then
+	if def.wall then
+		-- walls are the opposite of every other tower: they must sit ON the lane
+		if Map.distanceToPath(position) > Balance.WallMaxDist then
+			return false, "Walls must be placed on the path"
+		end
+	elseif Map.distanceToPath(position) < (Balance.PathClearance + def.placementRadius) then
 		return false, "Too close to the path"
 	end
 	for _, t in existing do

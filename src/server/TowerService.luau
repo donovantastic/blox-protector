@@ -16,6 +16,7 @@ local PlacementService = require(script.Parent.PlacementService)
 local Economy = require(script.Parent.EconomyService)
 local EnemyService = require(script.Parent.EnemyService)
 local GameState = require(script.Parent.GameState)
+local Map = require(script.Parent.Map)
 
 type Tower = {
 	id: number,
@@ -155,6 +156,48 @@ local function buildDrillModel(model: Model, position: Vector3): (Model, BasePar
 	return model, turret
 end
 
+-- Find which way the path runs at `position` (unit direction of the nearest path
+-- segment), so a wall can be laid ACROSS the lane instead of at a random angle.
+local function pathDirectionAt(position: Vector3): Vector3
+	local path = Map.getPath()
+	local bestDir = Vector3.new(0, 0, 1)
+	local bestDist = math.huge
+	for i = 1, #path - 1 do
+		local a, b = path[i], path[i + 1]
+		local ab = b - a
+		local lenSq = ab:Dot(ab)
+		if lenSq > 0 then
+			local t = math.clamp((position - a):Dot(ab) / lenSq, 0, 1)
+			local proj = a + ab * t
+			local d = (position - proj).Magnitude
+			if d < bestDist then
+				bestDist = d
+				bestDir = ab
+			end
+		end
+	end
+	local flat = Vector3.new(bestDir.X, 0, bestDir.Z)
+	return if flat.Magnitude > 0.001 then flat.Unit else Vector3.new(0, 0, 1)
+end
+
+-- A "wall" tower (the Brick Layer): a brick slab laid across the lane. It doesn't
+-- block movement (enemies are CFrame-driven) — it just marks the damage zone.
+local function buildWallModel(model: Model, position: Vector3): (Model, BasePart)
+	local dir = pathDirectionAt(position)
+	local center = position + Vector3.new(0, 2.5, 0)
+	local wall = Instance.new("Part")
+	wall.Name = "Wall"
+	wall.Anchored = true
+	wall.CanCollide = false
+	wall.Size = Vector3.new(11, 5, 1.4) -- wide across the lane, thin along it
+	wall.CFrame = CFrame.lookAt(center, center + dir) -- -Z faces along the path
+	wall.Color = Color3.fromRGB(170, 70, 55)
+	wall.Material = Enum.Material.Brick
+	wall.Parent = model
+	model.PrimaryPart = wall
+	return model, wall
+end
+
 -- ---------------------------------------------------------------- model -------
 local function buildTower(
 	def: Towers.Tower,
@@ -184,6 +227,11 @@ local function buildTower(
 	-- the Drill gets a hand-built cone graybox instead of the plain box
 	if towerType == "Drill" then
 		return buildDrillModel(model, position)
+	end
+
+	-- a wall tower gets a brick slab across the lane
+	if def.wall then
+		return buildWallModel(model, position)
 	end
 
 	local base = Instance.new("Part")
@@ -291,11 +339,31 @@ local function fire(tower: Tower, target: EnemyService.Enemy)
 	end
 end
 
+-- A wall tower: every tick, damage EVERY enemy standing inside its zone (not just
+-- one). That's how enemies "take damage as they pass through" the wall.
+local function fireWall(tower: Tower, enemies: { EnemyService.Enemy })
+	if tower.cooldown > 0 then
+		return
+	end
+	local range = level(tower).range
+	local dmg = level(tower).damage
+	for _, enemy in enemies do
+		if not enemy.dead and (enemy.primary.Position - tower.position).Magnitude <= range then
+			EnemyService.takeDamage(enemy, dmg)
+		end
+	end
+	tower.cooldown = 1 / tower.def.fireRate
+end
+
 function TowerService.step(dt: number)
 	local enemies = EnemyService.getActive()
 	for _, tower in towers do
 		if tower.cooldown > 0 then
 			tower.cooldown = math.max(0, tower.cooldown - dt) -- reload even while idle
+		end
+		if tower.def.wall then
+			fireWall(tower, enemies) -- area damage, no aiming/targeting
+			continue
 		end
 		local target = pickTarget(tower, enemies)
 		if target then

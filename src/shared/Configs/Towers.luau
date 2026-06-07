@@ -34,6 +34,10 @@ export type Tower = {
 	levels: { Level }, -- index = upgrade level (1 = base)
 	debuff: Debuff?, -- optional: a status effect each shot applies (e.g. paint = slow)
 	knockback: number?, -- optional: studs to bounce the enemy BACKWARD along the path
+	-- optional: a "wall" tower is placed ON the path instead of beside it, and instead
+	-- of shooting one enemy it damages EVERY enemy inside its `range` each tick (so
+	-- enemies take damage as they pass through). `damage` = per tick, `fireRate` = ticks/sec.
+	wall: boolean?,
 }
 
 local Towers: { [string]: Tower } = {
@@ -135,6 +139,22 @@ local Towers: { [string]: Tower } = {
 			{ range = 12, damage = 18, cost = 150 },
 			{ range = 14, damage = 28, cost = 230 },
 			{ range = 16, damage = 42, cost = 380 },
+		},
+	},
+
+	Trowel = {
+		name = "Brick Layer",
+		desc = "Slaps a brick wall right across the lane. Enemies don't stop — they grind through it and get chewed up.",
+		model = "Trowel",
+		cost = 90,
+		placementRadius = 3,
+		fireRate = 4, -- damage "ticks" per second while an enemy is inside the wall
+		targeting = "first", -- unused for walls (it hits everything in range), but required
+		wall = true, -- placed ON the path; damages every enemy in `range` each tick
+		levels = {
+			{ range = 6, damage = 4, cost = 90 },
+			{ range = 7, damage = 7, cost = 140 },
+			{ range = 8, damage = 12, cost = 230 },
 		},
 	},
 

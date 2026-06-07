@@ -1,6 +1,6 @@
 --!strict
 -- Bottom hotbar: the starter towers in the first slots, the rest locked until the
--- Merchant unlocks them (TowerUnlocked). Click a slot or press 1-7 to arm a tower;
+-- Merchant unlocks them (TowerUnlocked). Click a slot or press 1-8 to arm a tower;
 -- press again / Esc to cancel.
 
 local Players = game:GetService("Players")
@@ -30,6 +30,7 @@ local KEY_TO_SLOT: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.Five] = 5,
 	[Enum.KeyCode.Six] = 6,
 	[Enum.KeyCode.Seven] = 7,
+	[Enum.KeyCode.Eight] = 8,
 }
 
 local function selectSlot(index: number)
