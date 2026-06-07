@@ -11,6 +11,7 @@ local Chapters = require(Shared.Configs.Chapters)
 local Remotes = require(Shared.Remotes)
 local EnemyService = require(script.Parent.EnemyService)
 local GameState = require(script.Parent.GameState)
+local Economy = require(script.Parent.EconomyService)
 
 local WaveManager = {}
 
@@ -87,6 +88,10 @@ function WaveManager.start()
 			if not playing() then
 				break
 			end
+			Economy.add(30 + waveNumber * 10) -- wave-clear bonus: keeps the economy flowing
+			notify:FireAllClients(
+				("Wave %d cleared!  +$%d"):format(waveNumber, 30 + waveNumber * 10)
+			)
 			task.wait(BREATHER)
 		end
 

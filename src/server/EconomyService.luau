@@ -7,7 +7,7 @@
 
 local Economy = {}
 
-local STARTING_CASH = 150
+local STARTING_CASH = 275
 
 local cash = STARTING_CASH
 

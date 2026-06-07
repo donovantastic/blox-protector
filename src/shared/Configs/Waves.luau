@@ -36,8 +36,8 @@ local EXPLICIT: { Wave } = {
 -- Procedural fallback for waves beyond the explicit list (1-indexed wave number).
 local function generate(waveNumber: number): Wave
 	local over = waveNumber - #EXPLICIT
-	local count = 10 + over * 3
-	local healthMult = 1.2 + over * 0.18
+	local count = 8 + over * 2
+	local healthMult = 1.1 + over * 0.12
 	-- sprinkle a brute every few waves
 	local wave: Wave = {
 		{ enemyType = "Grunt", count = count, spacing = 0.45, healthMult = healthMult },
@@ -53,7 +53,7 @@ local function generate(waveNumber: number): Wave
 	if waveNumber % 2 == 0 then
 		table.insert(
 			wave,
-			{ enemyType = "Runner", count = 5 + over, spacing = 0.4, healthMult = healthMult }
+			{ enemyType = "Runner", count = 3 + over, spacing = 0.4, healthMult = healthMult }
 		)
 	end
 	return wave
