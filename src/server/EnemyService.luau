@@ -53,6 +53,132 @@ local GRAYBOX_COLORS: { [string]: Color3 } = {
 	Boss2 = Color3.fromRGB(245, 110, 50),
 }
 
+-- Custom multi-part graybox for the Push-Pin enemy: a red flared "pin" body with a
+-- smug face and a little steel drill-spike on top. Everything is built around the
+-- body (the PrimaryPart) at the local origin; the movement loop pivots the whole
+-- model, so all of these parts travel together.
+local function buildPinEnemy(def: Enemies.Enemy): (Model, BasePart)
+	local RED = Color3.fromRGB(225, 35, 35)
+	local BLACK = Color3.fromRGB(20, 20, 22)
+	local STEEL = Color3.fromRGB(150, 165, 195)
+	local model = Instance.new("Model")
+	model.Name = def.model
+
+	local function piece(
+		name: string,
+		size: Vector3,
+		cframe: CFrame,
+		color: Color3,
+		material: Enum.Material,
+		shape: Enum.PartType?
+	): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.Size = size
+		p.CFrame = cframe
+		p.Color = color
+		p.Material = material
+		if shape then
+			p.Shape = shape
+		end
+		p.Parent = model
+		return p
+	end
+
+	-- red flared body: a tall core, a wide collar up top, a wide skirt at the base
+	local body = piece(
+		"Body",
+		Vector3.new(2.3, 3.4, 1.5),
+		CFrame.new(0, 0, 0),
+		RED,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"Collar",
+		Vector3.new(2.9, 0.55, 1.85),
+		CFrame.new(0, 1.45, 0),
+		RED,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"Skirt",
+		Vector3.new(3.1, 0.8, 2.0),
+		CFrame.new(0, -1.3, 0),
+		RED,
+		Enum.Material.SmoothPlastic
+	)
+
+	-- cartoon face on the front (-Z is the direction it walks, so it leads with its face)
+	local FZ = -0.78
+	piece(
+		"EyeL",
+		Vector3.new(0.32, 0.42, 0.12),
+		CFrame.new(-0.45, 0.45, FZ),
+		BLACK,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"EyeR",
+		Vector3.new(0.32, 0.42, 0.12),
+		CFrame.new(0.45, 0.45, FZ),
+		BLACK,
+		Enum.Material.SmoothPlastic
+	)
+	-- the smug raised eyebrow
+	piece(
+		"Brow",
+		Vector3.new(0.6, 0.14, 0.12),
+		CFrame.new(-0.45, 0.86, FZ) * CFrame.Angles(0, 0, math.rad(-18)),
+		BLACK,
+		Enum.Material.SmoothPlastic
+	)
+	-- smile: a flat middle with two ends turned up (ends sit higher than the middle)
+	piece(
+		"MouthMid",
+		Vector3.new(0.7, 0.14, 0.1),
+		CFrame.new(0, -0.45, FZ),
+		BLACK,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"MouthL",
+		Vector3.new(0.34, 0.14, 0.1),
+		CFrame.new(-0.48, -0.36, FZ) * CFrame.Angles(0, 0, math.rad(38)),
+		BLACK,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"MouthR",
+		Vector3.new(0.34, 0.14, 0.1),
+		CFrame.new(0.48, -0.36, FZ) * CFrame.Angles(0, 0, math.rad(-38)),
+		BLACK,
+		Enum.Material.SmoothPlastic
+	)
+
+	-- steel drill-spike on top: stacked discs of shrinking radius, like the Dev Drill
+	local STEEL_TIP = Color3.fromRGB(225, 232, 245)
+	local upright = CFrame.Angles(0, 0, math.rad(90))
+	local radii = { 0.5, 0.37, 0.25, 0.13 }
+	local segHeight = 0.4
+	local sy = 1.75 -- just above the collar
+	for i, r in radii do
+		piece(
+			"Spike" .. i,
+			Vector3.new(segHeight, r * 2, r * 2),
+			CFrame.new(0, sy + segHeight / 2, 0) * upright,
+			STEEL:Lerp(STEEL_TIP, (i - 1) / #radii * 0.6),
+			Enum.Material.Metal,
+			Enum.PartType.Cylinder
+		)
+		sy += segHeight
+	end
+
+	model.PrimaryPart = body
+	return model, body
+end
+
 local function buildModel(def: Enemies.Enemy): (Model, BasePart)
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	local enemiesFolder = assets and assets:FindFirstChild("Enemies")
@@ -67,6 +193,11 @@ local function buildModel(def: Enemies.Enemy): (Model, BasePart)
 			end
 		end
 		return clone, clone.PrimaryPart :: BasePart
+	end
+
+	-- the Push-Pin gets a hand-built multi-part graybox instead of a plain box
+	if def.model == "Pin" then
+		return buildPinEnemy(def)
 	end
 
 	-- graybox fallback
@@ -155,7 +286,9 @@ function EnemyService.spawn(enemyType: string, healthMult: number): Enemy?
 	nextId += 1
 	local hp = math.floor(def.health * healthMult + 0.5)
 
-	primary.CFrame = CFrame.new(path[1] + Vector3.new(0, primary.Size.Y / 2, 0))
+	-- PivotTo moves the WHOLE model (every part), not just the primary — so multi-part
+	-- enemies like the Push-Pin keep their pieces together as they travel.
+	model:PivotTo(CFrame.new(path[1] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
 	model:SetAttribute("EnemyId", nextId)
 	model:SetAttribute("Health", hp)
@@ -255,7 +388,9 @@ function EnemyService.knockback(enemy: Enemy, studs: number)
 	end
 	enemy.waypointIndex = math.max(2, idx) -- can't head toward anything before path[2]
 	enemy.distance = math.max(0, enemy.distance - (studs - remaining)) -- keep targeting honest
-	enemy.primary.Position = pos + Vector3.new(0, half, 0) -- .Position keeps its facing
+	-- move the WHOLE model to the new spot while keeping its current facing
+	local facing = enemy.primary.CFrame - enemy.primary.CFrame.Position
+	enemy.model:PivotTo(facing + (pos + Vector3.new(0, half, 0)))
 end
 
 -- Move every active enemy one frame along the path.
@@ -312,9 +447,9 @@ function EnemyService.step(dt: number)
 		if distLeft > 0.001 then
 			-- face along the direction of travel — always a valid lookAt (avoids the
 			-- "position == lookAt" error when we land exactly on a waypoint).
-			enemy.primary.CFrame = CFrame.lookAt(newPos, newPos + toTarget.Unit)
+			enemy.model:PivotTo(CFrame.lookAt(newPos, newPos + toTarget.Unit))
 		else
-			enemy.primary.CFrame = CFrame.new(newPos)
+			enemy.model:PivotTo(CFrame.new(newPos))
 		end
 	end
 end

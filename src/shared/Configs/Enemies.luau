@@ -46,6 +46,16 @@ local Enemies: { [string]: Enemy } = {
 		leakDamage = 3,
 	},
 
+	Pin = {
+		name = "The Pushpin",
+		desc = "A smug little push-pin with a drill for a head. Thinks it can just stick around forever.",
+		model = "Pin",
+		health = 52,
+		speed = 9,
+		reward = 20,
+		leakDamage = 3,
+	},
+
 	Boss = {
 		name = "The Compiler",
 		desc = "The Great Smoothing, compiled into one entity. Roll it back before it overwrites the server.",
