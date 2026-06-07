@@ -175,6 +175,57 @@ local function buildPinEnemy(def: Enemies.Enemy): (Model, BasePart)
 		sy += segHeight
 	end
 
+	-- tank tracks at the base (it rolls, it doesn't walk): two dark treads, each with
+	-- a front and rear wheel poking out the ends
+	local TRACK = Color3.fromRGB(40, 43, 50)
+	local WHEEL = Color3.fromRGB(72, 76, 84)
+	for _, side in { -1, 1 } do
+		local x = side * 1.6
+		piece(
+			if side < 0 then "TrackL" else "TrackR",
+			Vector3.new(0.7, 1.0, 2.8),
+			CFrame.new(x, -1.2, 0),
+			TRACK,
+			Enum.Material.Metal
+		)
+		for _, z in { -1.0, 1.0 } do
+			piece(
+				"Wheel",
+				Vector3.new(0.78, 0.9, 0.9),
+				CFrame.new(x, -1.25, z),
+				WHEEL,
+				Enum.Material.SmoothPlastic,
+				Enum.PartType.Cylinder
+			)
+		end
+	end
+
+	-- a battery strapped to its back (+Z is the back, since it leads with its face)
+	local BATTERY = Color3.fromRGB(70, 180, 95)
+	local GOLD = Color3.fromRGB(235, 200, 80)
+	piece(
+		"Battery",
+		Vector3.new(1.2, 1.5, 0.7),
+		CFrame.new(0, 0.25, 1.15),
+		BATTERY,
+		Enum.Material.SmoothPlastic
+	)
+	piece( -- a stripe around its middle
+		"BatteryBand",
+		Vector3.new(1.26, 0.34, 0.76),
+		CFrame.new(0, 0.05, 1.15),
+		GOLD,
+		Enum.Material.SmoothPlastic
+	)
+	piece( -- the little + terminal on top
+		"BatteryTip",
+		Vector3.new(0.34, 0.34, 0.34),
+		CFrame.new(0, 1.05, 1.15) * CFrame.Angles(0, 0, math.rad(90)),
+		GOLD,
+		Enum.Material.Metal,
+		Enum.PartType.Cylinder
+	)
+
 	model.PrimaryPart = body
 	return model, body
 end

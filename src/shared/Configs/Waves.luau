@@ -58,15 +58,12 @@ local function generate(waveNumber: number): Wave
 		)
 	end
 	if waveNumber % 4 == 0 then
-		table.insert(
-			wave,
-			{
-				enemyType = "Pin",
-				count = 2 + math.floor(over / 2),
-				spacing = 1.0,
-				healthMult = healthMult,
-			}
-		)
+		table.insert(wave, {
+			enemyType = "Pin",
+			count = 2 + math.floor(over / 2),
+			spacing = 1.0,
+			healthMult = healthMult,
+		})
 	end
 	return wave
 end
