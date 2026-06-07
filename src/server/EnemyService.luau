@@ -8,6 +8,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
 local Enemies = require(ReplicatedStorage:WaitForChild("Shared").Configs.Enemies)
 local Map = require(script.Parent.Map)
@@ -22,6 +24,7 @@ export type Enemy = {
 	waypointIndex: number, -- next path point we're walking toward
 	distance: number, -- total studs travelled (for targeting)
 	dead: boolean,
+	bar: Frame?, -- health-bar fill
 }
 
 local EnemyService = {}
@@ -70,6 +73,50 @@ local function buildModel(def: Enemies.Enemy): (Model, BasePart)
 	return model, part
 end
 
+local function buildHealthBar(primary: BasePart): Frame
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "HealthBar"
+	gui.Adornee = primary
+	gui.Size = UDim2.fromOffset(56, 8)
+	gui.StudsOffset = Vector3.new(0, 2.4, 0)
+	gui.AlwaysOnTop = true
+	gui.MaxDistance = 240
+	gui.Parent = primary
+
+	local back = Instance.new("Frame")
+	back.Size = UDim2.fromScale(1, 1)
+	back.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+	back.BorderSizePixel = 0
+	back.Parent = gui
+
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.BackgroundColor3 = Color3.fromRGB(90, 220, 110)
+	fill.BorderSizePixel = 0
+	fill.Parent = back
+	return fill
+end
+
+local function deathPop(position: Vector3, color: Color3)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CastShadow = false
+	p.Material = Enum.Material.Neon
+	p.Color = color
+	p.Shape = Enum.PartType.Ball
+	p.Size = Vector3.new(1, 1, 1)
+	p.Position = position
+	p.Parent = Workspace
+	TweenService:Create(
+		p,
+		TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = Vector3.new(5, 5, 5), Transparency = 1 }
+	):Play()
+	Debris:AddItem(p, 0.3)
+end
+
 function EnemyService.init()
 	container = Workspace:FindFirstChild("Enemies") :: Folder
 	if not container then
@@ -114,6 +161,7 @@ function EnemyService.spawn(enemyType: string, healthMult: number): Enemy?
 		distance = 0,
 		dead = false,
 	}
+	enemy.bar = buildHealthBar(primary)
 	table.insert(active, enemy)
 	return enemy
 end
@@ -130,7 +178,11 @@ function EnemyService.takeDamage(enemy: Enemy, amount: number): boolean
 	end
 	enemy.health -= amount
 	enemy.model:SetAttribute("Health", math.max(0, enemy.health))
+	if enemy.bar then
+		enemy.bar.Size = UDim2.fromScale(math.max(0, enemy.health) / enemy.maxHealth, 1)
+	end
 	if enemy.health <= 0 then
+		deathPop(enemy.primary.Position, enemy.primary.Color)
 		despawn(enemy)
 		EnemyService.onDeath(enemy)
 		return true
