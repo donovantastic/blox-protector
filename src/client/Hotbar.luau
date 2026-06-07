@@ -1,6 +1,7 @@
 --!strict
--- Bottom hotbar: 5 slots, the 3 starter towers in the first slots (rest locked).
--- Click a slot or press 1-5 to arm a tower for placement; press again / Esc to cancel.
+-- Bottom hotbar: the starter towers in the first slots, the rest locked until the
+-- Merchant unlocks them (TowerUnlocked). Click a slot or press 1-5 to arm a tower;
+-- press again / Esc to cancel.
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -9,8 +10,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Towers = require(Shared.Configs.Towers)
 local Balance = require(Shared.Configs.Balance)
+local Remotes = require(Shared.Remotes)
 local ClientState = require(script.Parent.ClientState)
-local SoundController = require(script.Parent.SoundController)
 
 local player = Players.LocalPlayer
 
@@ -18,6 +19,8 @@ local Hotbar = {}
 
 type Slot = { button: TextButton, towerType: string?, cost: TextLabel, accent: Frame }
 local slots: { Slot } = {}
+local row: Frame
+local unlockedTowers: { string } = table.clone(Balance.StarterTowers)
 
 local KEY_TO_SLOT: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.One] = 1,
@@ -37,7 +40,6 @@ local function selectSlot(index: number)
 	else
 		ClientState.setSelected(slot.towerType)
 	end
-	SoundController.play("uiClick")
 end
 
 local function buildSlot(parent: Instance, index: number, towerType: string?): Slot
@@ -126,6 +128,17 @@ local function refresh()
 	end
 end
 
+local function rebuild()
+	for _, slot in slots do
+		slot.button:Destroy()
+	end
+	table.clear(slots)
+	for i = 1, Balance.HotbarSlots do
+		slots[i] = buildSlot(row, i, unlockedTowers[i])
+	end
+	refresh()
+end
+
 function Hotbar.init()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Hotbar"
@@ -133,7 +146,7 @@ function Hotbar.init()
 	gui.IgnoreGuiInset = true
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	local row = Instance.new("Frame")
+	row = Instance.new("Frame")
 	row.AnchorPoint = Vector2.new(0.5, 1)
 	row.Position = UDim2.new(0.5, 0, 1, -16)
 	row.Size = UDim2.fromOffset(108 * Balance.HotbarSlots + 10 * (Balance.HotbarSlots - 1), 96)
@@ -145,9 +158,7 @@ function Hotbar.init()
 	layout.Padding = UDim.new(0, 10)
 	layout.Parent = row
 
-	for i = 1, Balance.HotbarSlots do
-		slots[i] = buildSlot(row, i, Balance.StarterTowers[i])
-	end
+	rebuild()
 
 	UserInputService.InputBegan:Connect(function(input, processed)
 		if processed then
@@ -156,6 +167,14 @@ function Hotbar.init()
 		local slotIndex = KEY_TO_SLOT[input.KeyCode]
 		if slotIndex then
 			selectSlot(slotIndex)
+		end
+	end)
+
+	Remotes.event("TowerUnlocked").OnClientEvent:Connect(function(towerType)
+		local t = tostring(towerType)
+		if Towers[t] and not table.find(unlockedTowers, t) then
+			table.insert(unlockedTowers, t)
+			rebuild()
 		end
 	end)
 

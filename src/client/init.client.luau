@@ -3,6 +3,7 @@
 
 local SoundController = require(script.SoundController)
 local UIController = require(script.UIController)
+local CoinHUD = require(script.CoinHUD)
 local Hotbar = require(script.Hotbar)
 local PlacementController = require(script.PlacementController)
 local TowerPanel = require(script.TowerPanel)
@@ -14,6 +15,7 @@ local ExploreController = require(script.ExploreController)
 
 SoundController.init()
 UIController.init()
+CoinHUD.init()
 Hotbar.init()
 PlacementController.init()
 TowerPanel.init()

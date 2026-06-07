@@ -36,6 +36,7 @@ EnemyService.onDeath = function(_enemy: Enemy) end :: (Enemy) -> ()
 local active: { Enemy } = {}
 local nextId = 0
 local container: Folder
+local frozenUntil = 0 -- Defrag card: all enemies stop moving until this clock time
 
 local GRAYBOX_COLORS: { [string]: Color3 } = {
 	Grunt = Color3.fromRGB(200, 80, 80),
@@ -193,14 +194,23 @@ function EnemyService.takeDamage(enemy: Enemy, amount: number): boolean
 	return false
 end
 
+-- Freeze all enemies for `duration` seconds (Defrag card).
+function EnemyService.freezeAll(duration: number)
+	frozenUntil = os.clock() + duration
+end
+
 -- Move every active enemy one frame along the path.
 function EnemyService.step(dt: number)
 	local path = Map.getPath()
+	local frozen = os.clock() < frozenUntil
 	for i = #active, 1, -1 do
 		local enemy = active[i]
 		if enemy.dead then
 			table.remove(active, i)
 			continue
+		end
+		if frozen then
+			continue -- defragged: hold position
 		end
 
 		local target = path[enemy.waypointIndex]

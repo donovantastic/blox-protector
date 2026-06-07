@@ -68,7 +68,7 @@ local function waitForIntro()
 	end
 end
 
-function WaveManager.start()
+function WaveManager.start(isFinal: boolean)
 	task.spawn(function()
 		local chapter = Chapters[1]
 
@@ -106,16 +106,18 @@ function WaveManager.start()
 
 		if playing() then
 			GameState.win()
-			-- play the closing dialogue, then show the end card only after it's dismissed
-			introDone = false
-			playDialogue:FireAllClients(chapter.endKey)
-			local elapsed = 0
-			while not introDone and elapsed < 25 do
-				task.wait(0.2)
-				elapsed += 0.2
+			if isFinal then
+				-- closing dialogue, then the demo end card once it's dismissed
+				introDone = false
+				playDialogue:FireAllClients(chapter.endKey)
+				local elapsed = 0
+				while not introDone and elapsed < 25 do
+					task.wait(0.2)
+					elapsed += 0.2
+				end
+				task.wait(0.4)
+				showCard:FireAllClients("end", chapter.endCard)
 			end
-			task.wait(0.4)
-			showCard:FireAllClients("end", chapter.endCard)
 		end
 		WaveManager.onComplete(GameState.getStatus() == "won")
 		print("[Chapter] ended:", GameState.getStatus())

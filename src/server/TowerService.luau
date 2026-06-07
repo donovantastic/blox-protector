@@ -35,16 +35,25 @@ local nextId = 0
 local towersFolder: Folder
 local tracersFolder: Folder
 
--- solo: a single shared unlocked set (the 3 starters)
+-- solo: a single shared unlocked set (the 3 starters; more from the Merchant)
 local unlocked: { [string]: boolean } = {}
 for _, t in Balance.StarterTowers do
 	unlocked[t] = true
+end
+
+function TowerService.unlock(towerType: string)
+	unlocked[towerType] = true
+end
+
+function TowerService.isUnlocked(towerType: string): boolean
+	return unlocked[towerType] == true
 end
 
 local GRAYBOX: { [string]: Color3 } = {
 	Pelter = Color3.fromRGB(90, 170, 250),
 	Sniper = Color3.fromRGB(250, 210, 90),
 	Splash = Color3.fromRGB(150, 120, 240),
+	Sword = Color3.fromRGB(185, 192, 205),
 }
 
 -- ---------------------------------------------------------------- model -------

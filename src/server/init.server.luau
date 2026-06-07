@@ -1,7 +1,7 @@
 --!strict
--- Server entrypoint. Boots services, builds the Act-1 exploration stage + the
--- gauntlet map, wires the mode flow (Explore -> reach the Gate -> Gauntlet ->
--- survive -> ChapterComplete), and handles the tower remotes.
+-- Server entrypoint. Boots services and wires the chapter progression:
+--   Act 1 lane (Explore) -> Gate -> Gauntlet -> Act 2 roam (Explore) -> Gate ->
+--   Gauntlet (final) -> ChapterComplete. Plus gates, towers, cards, coins/merchant.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -11,6 +11,7 @@ local Debris = game:GetService("Debris")
 
 local Aesthetic = require(script.Aesthetic)
 local ExploreStage = require(script.ExploreStage)
+local ExploreStage2 = require(script.ExploreStage2)
 local DevTestMap = require(script.DevTestMap)
 local Map = require(script.Map)
 local GameState = require(script.GameState)
@@ -20,8 +21,12 @@ local TowerService = require(script.TowerService)
 local WaveManager = require(script.WaveManager)
 local ModeService = require(script.ModeService)
 local CardService = require(script.CardService)
+local CoinService = require(script.CoinService)
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared").Remotes)
+local notify = Remotes.event("Notify")
+
+local SWORD_PRICE = 100
 
 Aesthetic.apply()
 ExploreStage.ensure() -- Act 1 lane (Studio graybox)
@@ -40,53 +45,7 @@ EnemyService.onDeath = function(enemy)
 	Economy.add(enemy.def.reward)
 end
 
--- mode flow: entering the gauntlet starts the waves; surviving completes the chapter
-ModeService.onChange = function(mode)
-	if mode == "Gauntlet" then
-		-- move players to a vantage over the gauntlet map (free 3D camera takes over)
-		for _, plr in Players:GetPlayers() do
-			local char = plr.Character
-			if char then
-				char:PivotTo(CFrame.new(0, 6, 55))
-			end
-		end
-		WaveManager.start()
-	end
-end
-WaveManager.onComplete = function(won)
-	if won then
-		ModeService.set("ChapterComplete")
-	end
-end
-
--- the Gate: sealed (red) until Builderman powers it on; then touching it locks in
-local notify = Remotes.event("Notify")
-local stage = Workspace:FindFirstChild("ExploreStage")
-local gate = stage and stage:FindFirstChild("Gate")
-if gate and gate:IsA("BasePart") then
-	local sealedDebounce = false
-	gate.Touched:Connect(function(hit)
-		if ModeService.get() ~= "Explore" then
-			return
-		end
-		local plr = Players:GetPlayerFromCharacter(hit.Parent)
-		if not plr then
-			return
-		end
-		if gate:GetAttribute("Unlocked") then
-			ModeService.set("Gauntlet")
-		elseif not sealedDebounce then
-			sealedDebounce = true
-			notify:FireClient(plr, "The gate is sealed — talk to Builderman first.")
-			task.delay(3, function()
-				sealedDebounce = false
-			end)
-		end
-	end)
-end
-
--- "powering on" effect when Builderman unlocks the gate: flicker -> spark burst ->
--- flash white -> settle to a glowing blue
+-- ---- gates -------------------------------------------------------------------
 local function powerOnGate(gatePart: BasePart)
 	local attach = Instance.new("Attachment")
 	attach.Parent = gatePart
@@ -140,10 +99,93 @@ local function powerOnGate(gatePart: BasePart)
 	end)
 end
 
--- start each player in the right place for the current mode (backstop vs spawn picks)
+local function wireGate(gatePart: BasePart)
+	local sealedDebounce = false
+	gatePart.Touched:Connect(function(hit)
+		if ModeService.get() ~= "Explore" then
+			return
+		end
+		local plr = Players:GetPlayerFromCharacter(hit.Parent)
+		if not plr then
+			return
+		end
+		if gatePart:GetAttribute("Unlocked") then
+			ModeService.set("Gauntlet")
+		elseif not sealedDebounce then
+			sealedDebounce = true
+			notify:FireClient(plr, "The gate is sealed — talk to Builderman first.")
+			task.delay(3, function()
+				sealedDebounce = false
+			end)
+		end
+	end)
+end
+
+-- Act 1 gate (sealed until Builderman powers it on)
+local stage1 = Workspace:FindFirstChild("ExploreStage")
+local act1Gate = stage1 and stage1:FindFirstChild("Gate")
+if act1Gate and act1Gate:IsA("BasePart") then
+	wireGate(act1Gate)
+end
+
+-- ---- progression -------------------------------------------------------------
+local act = 1
+
+local function teleportAll(cf: CFrame)
+	for _, plr in Players:GetPlayers() do
+		local char = plr.Character
+		if char then
+			char:PivotTo(cf)
+		end
+	end
+end
+
+local function act2SpawnCFrame(): CFrame
+	local s = Workspace:FindFirstChild("ExploreStage2")
+	local sp = s and s:FindFirstChild("Act2Spawn")
+	if sp and sp:IsA("BasePart") then
+		return CFrame.new(sp.Position + Vector3.new(0, 4, 0))
+	end
+	return CFrame.new(250, 6, 0)
+end
+
+ModeService.onChange = function(mode)
+	if mode == "Gauntlet" then
+		-- fresh gauntlet each time
+		GameState.reset()
+		Economy.init()
+		TowerService.reset()
+		teleportAll(CFrame.new(0, 6, 55))
+		WaveManager.start(act == 2)
+	end
+end
+
+WaveManager.onComplete = function(won)
+	if not won then
+		return
+	end
+	if act == 1 then
+		act = 2
+		ExploreStage2.ensure()
+		local stage2 = Workspace:FindFirstChild("ExploreStage2")
+		local gate2 = stage2 and stage2:FindFirstChild("Gate")
+		if gate2 and gate2:IsA("BasePart") then
+			wireGate(gate2)
+		end
+		teleportAll(act2SpawnCFrame())
+		notify:FireAllClients("Sector cleared! A new area opens up — go explore it.")
+		ModeService.set("Explore", "freewalk")
+	else
+		ModeService.set("ChapterComplete")
+	end
+end
+
+-- ---- character placement (backstop vs spawn picks) ---------------------------
 local function placeCharacter(char: Model)
 	if ModeService.get() == "Gauntlet" then
 		char:PivotTo(CFrame.new(0, 6, 55))
+	elseif act == 2 then
+		char:PivotTo(act2SpawnCFrame())
 	else
 		local s = Workspace:FindFirstChild("ExploreStage")
 		local sp = s and s:FindFirstChild("ExploreSpawn")
@@ -170,7 +212,7 @@ for _, plr in Players:GetPlayers() do
 	hookPlayer(plr)
 end
 
--- tower remotes (validate types; reject + Notify on failure)
+-- ---- remotes -----------------------------------------------------------------
 local function report(player: Player, ok: boolean, reason: string)
 	if not ok then
 		notify:FireClient(player, reason)
@@ -202,18 +244,18 @@ Remotes.event("RequestState").OnServerEvent:Connect(function()
 	GameState.broadcast()
 	ModeService.broadcast()
 	CardService.broadcast()
+	CoinService.broadcast()
 end)
 
--- card remotes
 Remotes.event("GrantCard").OnServerEvent:Connect(function(_player, cardId)
 	if typeof(cardId) ~= "string" then
 		return
 	end
 	CardService.grant(cardId)
-	-- Builderman handing you the card powers on the gate (red -> blue, passable)
-	if gate and gate:IsA("BasePart") and not gate:GetAttribute("Unlocked") then
-		gate:SetAttribute("Unlocked", true)
-		powerOnGate(gate)
+	-- Builderman's card powers on the Act 1 gate
+	if act1Gate and act1Gate:IsA("BasePart") and not act1Gate:GetAttribute("Unlocked") then
+		act1Gate:SetAttribute("Unlocked", true)
+		powerOnGate(act1Gate)
 	end
 end)
 Remotes.event("PlayCard").OnServerEvent:Connect(function(player, cardId)
@@ -223,7 +265,32 @@ Remotes.event("PlayCard").OnServerEvent:Connect(function(player, cardId)
 	report(player, CardService.play(player, cardId))
 end)
 
+-- coins + merchant
+Remotes.event("GrantCoins").OnServerEvent:Connect(function(_player, amount)
+	if typeof(amount) ~= "number" then
+		return
+	end
+	CoinService.grant(math.clamp(math.floor(amount), 0, 100000))
+end)
+Remotes.event("BuyTower").OnServerEvent:Connect(function(player, towerType)
+	if typeof(towerType) ~= "string" then
+		return
+	end
+	if TowerService.isUnlocked(towerType) then
+		notify:FireClient(player, "You already own that one.")
+		return
+	end
+	if not CoinService.trySpend(SWORD_PRICE) then
+		notify:FireClient(player, "Not enough coins — find more first!")
+		return
+	end
+	TowerService.unlock(towerType)
+	Remotes.event("TowerUnlocked"):FireAllClients(towerType)
+	notify:FireAllClients("Unlocked the Sword Fighter! It's in your hotbar.")
+end)
+
 GameState.broadcast()
 ModeService.broadcast()
+CoinService.broadcast()
 
 print("[Server] BLOX PROTECTOR booted — Explore mode")

@@ -1,9 +1,9 @@
 --!strict
--- Act 1 exploration + the mode camera handoff.
---   Explore  : 2.5D side-scroll camera (movement stays on X via the stage walls).
---   Talk [E] : freeze, 2D avatar conversation, then the card reveal, then a short
---              cutscene cutting to the gate as Builderman powers it on (the spark).
---   Gauntlet : free-range 3D — default camera so you can wander + zoom; tower UI shows.
+-- Exploration + the mode/camera handoff.
+--   Explore "sidescroll" (Act 1): 2.5D side camera, movement on X via stage walls.
+--   Explore "freewalk"   (Act 2): default 3rd-person camera, roam freely.
+--   Talk [E]: freeze, 2D avatar conversation, then grant (card / coins / buy).
+--   Gauntlet: free-range 3D (default camera), tower UI.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -30,9 +30,10 @@ local SIDE_Z = 26
 local SIDE_Y = 7
 
 local mode = "Explore"
+local style = "sidescroll"
 local busy = false -- talking / reveal / cutscene: input + walk locked
 local cutscene = false
-local givenCards: { [string]: boolean } = {}
+local claimed: { [Instance]: boolean } = {} -- NPCs whose one-time gift was taken
 
 local function rootPart(): BasePart?
 	local char = player.Character
@@ -52,12 +53,13 @@ local function setWalk(speed: number)
 	end
 end
 
+local function sideScrollActive(): boolean
+	return mode == "Explore" and style == "sidescroll" and not cutscene
+end
+
 local function updateCamera()
-	if cutscene then
-		return -- a cutscene tween owns the camera
-	end
-	if mode ~= "Explore" then
-		return -- gauntlet uses the default free/zoomable camera
+	if not sideScrollActive() then
+		return -- freewalk / gauntlet / cutscene use other cameras
 	end
 	local camera = Workspace.CurrentCamera
 	local root = rootPart()
@@ -92,12 +94,10 @@ end
 local function endBeat()
 	cutscene = false
 	busy = false
-	if mode == "Explore" then
-		setWalk(16)
-	end
+	setWalk(16)
 end
 
--- cut the camera to the gate so you see it power on, then hand back to side-scroll
+-- cut the camera to the Act 1 gate so you see it power on, then hand back
 local function gateCutscene()
 	local stage = Workspace:FindFirstChild("ExploreStage")
 	local gate = stage and stage:FindFirstChild("Gate")
@@ -131,6 +131,36 @@ local function gateCutscene()
 	end)
 end
 
+local function onConversationDone(npc: BasePart)
+	local cardId = npc:GetAttribute("GivesCard")
+	local coins = npc:GetAttribute("GivesCoins")
+	local isMerchant = npc:GetAttribute("IsMerchant")
+
+	if typeof(cardId) == "string" and Cards[cardId] and not claimed[npc] then
+		claimed[npc] = true
+		CardController.reveal(Cards[cardId], function()
+			Remotes.event("GrantCard"):FireServer(cardId)
+			if style == "sidescroll" then
+				gateCutscene() -- Act 1: cut to the gate powering on
+			else
+				endBeat()
+			end
+		end)
+	elseif typeof(coins) == "number" and not claimed[npc] then
+		claimed[npc] = true
+		Remotes.event("GrantCoins"):FireServer(coins)
+		endBeat()
+	elseif isMerchant == true then
+		local sells = npc:GetAttribute("SellsTower")
+		if typeof(sells) == "string" then
+			Remotes.event("BuyTower"):FireServer(sells)
+		end
+		endBeat()
+	else
+		endBeat()
+	end
+end
+
 local function talk(npc: BasePart)
 	local key = npc:GetAttribute("Dialogue")
 	if typeof(key) ~= "string" or not Dialogue[key] then
@@ -142,24 +172,14 @@ local function talk(npc: BasePart)
 	ConversationController.start(npc.Name, if typeof(avatarId) == "number" then avatarId else nil)
 	DialogueController.play(key, function()
 		ConversationController.stop()
-		local cardId = npc:GetAttribute("GivesCard")
-		if typeof(cardId) == "string" and Cards[cardId] and not givenCards[cardId] then
-			givenCards[cardId] = true
-			CardController.reveal(Cards[cardId], function()
-				-- granting the card powers on the gate; cut to it
-				Remotes.event("GrantCard"):FireServer(cardId)
-				gateCutscene()
-			end)
-		else
-			endBeat()
-		end
+		onConversationDone(npc)
 	end)
 end
 
 local function applyMode()
 	local camera = Workspace.CurrentCamera
 	if camera and not cutscene then
-		camera.CameraType = if mode == "Explore"
+		camera.CameraType = if sideScrollActive()
 			then Enum.CameraType.Scriptable
 			else Enum.CameraType.Custom
 	end
@@ -192,8 +212,9 @@ function ExploreController.init()
 		end
 	end)
 
-	Remotes.event("ModeChanged").OnClientEvent:Connect(function(newMode)
+	Remotes.event("ModeChanged").OnClientEvent:Connect(function(newMode, newStyle)
 		mode = tostring(newMode)
+		style = tostring(newStyle or "sidescroll")
 		applyMode()
 	end)
 

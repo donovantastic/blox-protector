@@ -1,7 +1,8 @@
 --!strict
--- Owns the current game mode (server-authoritative) and broadcasts changes. A
--- "chapter" flows Explore -> Gauntlet -> ChapterComplete. The client reacts to
--- ModeChanged (camera, controls, HUD visibility).
+-- Owns the current game mode + camera style (server-authoritative) and broadcasts
+-- changes. A "chapter" flows Explore -> Gauntlet -> Explore -> Gauntlet -> Complete.
+-- style: "sidescroll" (Act 1 lane) | "freewalk" (Act 2 roam). Clients react via
+-- ModeChanged(mode, style): camera, controls, HUD visibility.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared").Remotes)
@@ -11,6 +12,7 @@ local ModeService = {}
 export type Mode = string -- "Explore" | "Gauntlet" | "ChapterComplete"
 
 local current: Mode = "Explore"
+local currentStyle = "sidescroll"
 local modeChanged = Remotes.event("ModeChanged")
 
 -- set by init.server to run side effects on transitions (start the gauntlet, etc.)
@@ -20,18 +22,26 @@ function ModeService.get(): Mode
 	return current
 end
 
-function ModeService.set(mode: Mode)
-	if mode == current then
+function ModeService.getStyle(): string
+	return currentStyle
+end
+
+function ModeService.set(mode: Mode, style: string?)
+	local newStyle = style or currentStyle
+	local modeMoved = mode ~= current
+	if not modeMoved and newStyle == currentStyle then
 		return
 	end
 	current = mode
-	modeChanged:FireAllClients(mode)
-	ModeService.onChange(mode)
+	currentStyle = newStyle
+	modeChanged:FireAllClients(current, currentStyle)
+	if modeMoved then
+		ModeService.onChange(mode)
+	end
 end
 
--- re-send to a client that just asked (RequestState path)
 function ModeService.broadcast()
-	modeChanged:FireAllClients(current)
+	modeChanged:FireAllClients(current, currentStyle)
 end
 
 return ModeService

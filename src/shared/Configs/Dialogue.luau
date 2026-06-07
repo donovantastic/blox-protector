@@ -122,6 +122,63 @@ local Dialogue: { [string]: Sequence } = {
 			text = "But the Smoothing runs deep. This was only the first upload...",
 		},
 	},
+	act2_defrag = {
+		{
+			speaker = "Telamon",
+			mood = "Happy",
+			text = "Sup, Moderator. Name's Telamon — I keep the old scripts running.",
+		},
+		{ speaker = "You", mood = "Neutral", text = "The Smoothing reached this sector too?" },
+		{
+			speaker = "Telamon",
+			mood = "Serious",
+			text = "Creeping in. Here — a Defrag. Freezes the whole field for a few seconds.",
+		},
+		{
+			speaker = "Telamon",
+			mood = "Happy",
+			text = "Pop it when you're drowning. Buys you time to think.",
+		},
+	},
+	act2_hotfix = {
+		{
+			speaker = "Stickmasterluke",
+			mood = "Neutral",
+			text = "Heya. You look like you've been taking hits.",
+		},
+		{
+			speaker = "You",
+			mood = "Excited",
+			text = "Constantly. Got anything that patches the Core?",
+		},
+		{
+			speaker = "Stickmasterluke",
+			mood = "Happy",
+			text = "A Hotfix. Restores a chunk of base HP mid-fight. Don't waste it.",
+		},
+	},
+	act2_coins = {
+		{
+			speaker = "Noob",
+			mood = "Happy",
+			text = "ooo i found these shiny coins in the recycle bin!!",
+		},
+		{ speaker = "Noob", mood = "Neutral", text = "take em, i dunno what theyre for lol" },
+		{ speaker = "You", mood = "Happy", text = "...Thanks? The Merchant might." },
+	},
+	act2_merchant = {
+		{
+			speaker = "Merchant",
+			mood = "Neutral",
+			text = "Welcome. You look like you could use some STEEL.",
+		},
+		{
+			speaker = "Merchant",
+			mood = "Happy",
+			text = "The Sword Fighter — slices anything that wanders close. 100 coins.",
+		},
+		{ speaker = "You", mood = "Neutral", text = "Deal — if I've got the coins." },
+	},
 }
 
 return Dialogue

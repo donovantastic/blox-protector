@@ -23,6 +23,10 @@ local EVENTS = {
 	"GrantCard", -- (cardId: string) client claims a card an NPC handed over
 	"PlayCard", -- (cardId: string) play a card; server auto-targets (boss / strongest)
 	"HandChanged", -- (hand: {string}) server -> client: current hand of card ids
+	"GrantCoins", -- (amount: number) client claims coins from an NPC
+	"BuyTower", -- (towerType: string) client buys a tower at the Merchant
+	"CoinsChanged", -- (coins: number) server -> client: current coin total
+	"TowerUnlocked", -- (towerType: string) server -> client: tower now placeable
 }
 
 local Remotes = {}

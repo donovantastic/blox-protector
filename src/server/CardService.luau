@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Cards = require(Shared.Configs.Cards)
 local Remotes = require(Shared.Remotes)
 local EnemyService = require(script.Parent.EnemyService)
+local GameState = require(script.Parent.GameState)
 
 local CardService = {}
 
@@ -63,15 +64,20 @@ function CardService.play(_player: Player, cardId: string): (boolean, string)
 	if not card then
 		return false, "Unknown card"
 	end
-	local target = pickTarget()
-	if not target then
-		return false, "No target — save it for the swarm"
-	end
 
 	if card.effect == "damage" then
+		local target = pickTarget()
+		if not target then
+			return false, "No target — save it for the swarm"
+		end
 		EnemyService.takeDamage(target, card.power)
+	elseif card.effect == "freeze" then
+		EnemyService.freezeAll(card.power)
+	elseif card.effect == "heal" then
+		GameState.healBase(card.power)
+	else
+		return false, "That card fizzled"
 	end
-	-- (other effects resolve here as the deck grows)
 
 	table.remove(hand, idx)
 	CardService.broadcast()

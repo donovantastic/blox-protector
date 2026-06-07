@@ -72,4 +72,21 @@ function GameState.win()
 	end
 end
 
+-- Hotfix card: restore base HP (capped).
+function GameState.healBase(amount: number)
+	if status ~= "playing" then
+		return
+	end
+	baseHP = math.min(MAX_BASE_HP, baseHP + amount)
+	GameState.broadcast()
+end
+
+-- Fresh start for the next gauntlet (Act 2).
+function GameState.reset()
+	baseHP = MAX_BASE_HP
+	wave = 0
+	status = "playing"
+	GameState.broadcast()
+end
+
 return GameState

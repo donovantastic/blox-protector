@@ -21,6 +21,22 @@ local Cards: { [string]: Card } = {
 		effect = "damage",
 		power = 150,
 	},
+	defrag = {
+		id = "defrag",
+		name = "Defrag",
+		desc = "Freeze every corrupt process on the field for a few seconds. Buy yourself breathing room.",
+		rarity = "Common",
+		effect = "freeze",
+		power = 4, -- seconds
+	},
+	hotfix = {
+		id = "hotfix",
+		name = "Hotfix",
+		desc = "Patch the Database Core back up. Restores a chunk of base HP.",
+		rarity = "Common",
+		effect = "heal",
+		power = 30, -- base HP restored
+	},
 }
 
 return Cards

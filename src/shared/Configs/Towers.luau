@@ -71,6 +71,22 @@ local Towers: { [string]: Tower } = {
 			{ range = 22, damage = 16, cost = 240 },
 		},
 	},
+
+	-- unlocked from the Act 2 Merchant (not a starter)
+	Sword = {
+		name = "Sword Fighter",
+		desc = "A blocky knight who slices anything that wanders too close. Short reach, brutal hits.",
+		model = "Sword",
+		cost = 70,
+		placementRadius = 4,
+		fireRate = 1.6,
+		targeting = "closest",
+		levels = {
+			{ range = 10, damage = 12, cost = 70 },
+			{ range = 12, damage = 20, cost = 105 },
+			{ range = 14, damage = 34, cost = 190 },
+		},
+	},
 }
 
 return Towers
