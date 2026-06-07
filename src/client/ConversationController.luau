@@ -1,8 +1,8 @@
 --!strict
--- Pure-2D silhouette conversation scene (Block Tales-ish). Talking to an NPC slides
--- in a near-full-screen 2D framing: a moody backdrop + two silhouette figures (NPC
--- left, you right). The dialogue box (higher DisplayOrder) plays at the bottom over
--- it. Graybox silhouettes — Xander's art / real portraits drop in later.
+-- 2D conversation scene. Talking to an NPC slides in a framed 2D stage with two
+-- avatar portraits — the NPC (left) and YOU (right), pulled live from Roblox avatar
+-- thumbnails (GetUserThumbnailAsync). The dialogue box (higher DisplayOrder) plays
+-- at the bottom over it.
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -12,9 +12,11 @@ local ConversationController = {}
 local player = Players.LocalPlayer
 local gui: ScreenGui
 local backdrop: Frame
-local npcNameLabel: TextLabel
+local leftImg: ImageLabel
+local leftName: TextLabel
+local rightImg: ImageLabel
 
-local SILHOUETTE = Color3.fromRGB(8, 8, 14) -- near-black figures, read against the bright backlit backdrop
+local BUILDERMAN_USER_ID = 156 -- the real, original Builderman
 
 local function corner(parent: Instance, r: number)
 	local c = Instance.new("UICorner")
@@ -22,40 +24,55 @@ local function corner(parent: Instance, r: number)
 	c.Parent = parent
 end
 
--- a simple blocky humanoid silhouette (head + body) with a name under it
-local function silhouette(parent: Instance, onLeft: boolean): TextLabel
+-- a portrait slot: a colored rounded backing + the avatar image + a name label
+local function avatarSlot(
+	parent: Instance,
+	onLeft: boolean,
+	backing: Color3
+): (ImageLabel, TextLabel)
 	local holder = Instance.new("Frame")
-	holder.Size = UDim2.fromScale(0.3, 0.66)
-	holder.Position = if onLeft then UDim2.fromScale(0.08, 0.24) else UDim2.fromScale(0.62, 0.24)
-	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.fromScale(0.26, 0.5)
+	holder.Position = if onLeft then UDim2.fromScale(0.1, 0.22) else UDim2.fromScale(0.64, 0.22)
+	holder.BackgroundColor3 = backing
+	holder.BackgroundTransparency = 0.1
+	corner(holder, 18)
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 4
+	stroke.Color = Color3.fromRGB(20, 22, 30)
+	stroke.Parent = holder
 	holder.Parent = parent
 
-	local body = Instance.new("Frame")
-	body.Size = UDim2.fromScale(0.62, 0.6)
-	body.Position = UDim2.fromScale(0.19, 0.4)
-	body.BackgroundColor3 = SILHOUETTE
-	body.BorderSizePixel = 0
-	corner(body, 20)
-	body.Parent = holder
-
-	local head = Instance.new("Frame")
-	head.Size = UDim2.fromScale(0.42, 0.32)
-	head.Position = UDim2.fromScale(0.29, 0.08)
-	head.BackgroundColor3 = SILHOUETTE
-	head.BorderSizePixel = 0
-	corner(head, 16)
-	head.Parent = holder
+	local img = Instance.new("ImageLabel")
+	img.Size = UDim2.fromScale(1, 1)
+	img.BackgroundTransparency = 1
+	img.ScaleType = Enum.ScaleType.Fit
+	img.Parent = holder
 
 	local name = Instance.new("TextLabel")
-	name.Size = UDim2.fromScale(1.2, 0.08)
-	name.Position = UDim2.fromScale(-0.1, -0.12) -- above the figure (clear of the bottom box)
+	name.Size = UDim2.fromScale(1.2, 0.16)
+	name.Position = UDim2.fromScale(-0.1, -0.2)
 	name.BackgroundTransparency = 1
 	name.Font = Enum.Font.GothamBlack
 	name.TextScaled = true
 	name.TextColor3 = Color3.fromRGB(255, 255, 255)
-	name.TextStrokeTransparency = 0 -- solid dark outline so it reads on the bright backdrop
+	name.TextStrokeTransparency = 0
 	name.Parent = holder
-	return name
+	return img, name
+end
+
+local function loadAvatar(img: ImageLabel, userId: number)
+	task.spawn(function()
+		local ok, content = pcall(function()
+			return Players:GetUserThumbnailAsync(
+				userId,
+				Enum.ThumbnailType.AvatarBust,
+				Enum.ThumbnailSize.Size420x420
+			)
+		end)
+		if ok and content then
+			img.Image = content
+		end
+	end)
 end
 
 function ConversationController.init()
@@ -69,22 +86,28 @@ function ConversationController.init()
 
 	backdrop = Instance.new("Frame")
 	backdrop.Size = UDim2.fromScale(1, 1)
-	backdrop.BackgroundColor3 = Color3.fromRGB(96, 116, 210)
+	backdrop.BackgroundColor3 = Color3.fromRGB(58, 70, 128)
 	backdrop.BorderSizePixel = 0
 	backdrop.Parent = gui
 	local grad = Instance.new("UIGradient")
-	-- bright at top -> medium at bottom: a backlit "sky" so the dark figures pop
-	grad.Color = ColorSequence.new(Color3.fromRGB(154, 178, 255), Color3.fromRGB(72, 60, 124))
+	grad.Color = ColorSequence.new(Color3.fromRGB(96, 116, 196), Color3.fromRGB(28, 26, 56))
 	grad.Rotation = 90
 	grad.Parent = backdrop
 
-	npcNameLabel = silhouette(backdrop, true)
-	local youName = silhouette(backdrop, false)
+	leftImg, leftName = avatarSlot(backdrop, true, Color3.fromRGB(240, 200, 70)) -- NPC: yellow backing
+	local youImg, youName = avatarSlot(backdrop, false, Color3.fromRGB(70, 130, 220)) -- You: blue backing
+	rightImg = youImg
 	youName.Text = "You"
 end
 
-function ConversationController.start(name: string)
-	npcNameLabel.Text = name
+-- `npcUserId` (optional): the avatar to show for the NPC; defaults to Builderman.
+function ConversationController.start(name: string, npcUserId: number?)
+	leftName.Text = name
+	leftImg.Image = ""
+	rightImg.Image = ""
+	loadAvatar(leftImg, npcUserId or BUILDERMAN_USER_ID)
+	loadAvatar(rightImg, player.UserId)
+
 	gui.Enabled = true
 	backdrop.BackgroundTransparency = 1
 	TweenService:Create(backdrop, TweenInfo.new(0.25), { BackgroundTransparency = 0 }):Play()

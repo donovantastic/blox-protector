@@ -79,6 +79,7 @@ function ExploreStage.ensure()
 	npc.CanCollide = false
 	npc:SetAttribute("Dialogue", "explore_intro")
 	npc:SetAttribute("GivesCard", "rollback")
+	npc:SetAttribute("AvatarUserId", 156) -- the real Builderman
 	CollectionService:AddTag(npc, "NPC")
 	local bg = Instance.new("BillboardGui")
 	bg.Adornee = npc

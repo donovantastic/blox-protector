@@ -92,7 +92,8 @@ local function talk(npc: BasePart)
 	end
 	talking = true
 	setWalk(0)
-	ConversationController.start(npc.Name)
+	local avatarId = npc:GetAttribute("AvatarUserId")
+	ConversationController.start(npc.Name, if typeof(avatarId) == "number" then avatarId else nil)
 	DialogueController.play(key, function()
 		ConversationController.stop()
 		talking = false
