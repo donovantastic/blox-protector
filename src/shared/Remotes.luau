@@ -27,6 +27,7 @@ local EVENTS = {
 	"BuyTower", -- (towerType: string) client buys a tower at the Merchant
 	"CoinsChanged", -- (coins: number) server -> client: current coin total
 	"TowerUnlocked", -- (towerType: string) server -> client: tower now placeable
+	"GatePoweredOn", -- (position: Vector3) server -> client: cut the camera to this gate
 }
 
 local Remotes = {}

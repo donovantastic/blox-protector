@@ -47,6 +47,7 @@ end
 
 -- ---- gates -------------------------------------------------------------------
 local function powerOnGate(gatePart: BasePart)
+	Remotes.event("GatePoweredOn"):FireAllClients(gatePart.Position)
 	local attach = Instance.new("Attachment")
 	attach.Parent = gatePart
 

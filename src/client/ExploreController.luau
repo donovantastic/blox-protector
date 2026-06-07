@@ -95,20 +95,25 @@ local function endBeat()
 	cutscene = false
 	busy = false
 	setWalk(16)
+	local camera = Workspace.CurrentCamera
+	if camera then
+		camera.CameraType = if sideScrollActive()
+			then Enum.CameraType.Scriptable
+			else Enum.CameraType.Custom
+	end
 end
 
--- cut the camera to the Act 1 gate so you see it power on, then hand back
-local function gateCutscene()
-	local stage = Workspace:FindFirstChild("ExploreStage")
-	local gate = stage and stage:FindFirstChild("Gate")
+-- cut the camera to a gate so you see it power on, then hand back
+local function gateCutscene(gpos: Vector3)
 	local camera = Workspace.CurrentCamera
-	if not gate or not gate:IsA("BasePart") or not camera then
+	if not camera then
 		endBeat()
 		return
 	end
+	busy = true
 	cutscene = true
+	setWalk(0)
 	camera.CameraType = Enum.CameraType.Scriptable
-	local gpos = gate.Position
 	local shot = CFrame.lookAt(gpos + Vector3.new(11, 5, 17), gpos)
 	TweenService
 		:Create(camera, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -116,18 +121,23 @@ local function gateCutscene()
 		})
 		:Play()
 	task.delay(2.9, function()
-		local cam = Workspace.CurrentCamera
-		local root = rootPart()
-		if cam and root then
-			local p = root.Position
-			local back = CFrame.lookAt(
-				Vector3.new(p.X, p.Y + SIDE_Y, p.Z + SIDE_Z),
-				Vector3.new(p.X, p.Y + 1.5, p.Z)
-			)
-			TweenService:Create(cam, TweenInfo.new(0.5, Enum.EasingStyle.Quad), { CFrame = back })
-				:Play()
+		if style == "sidescroll" then
+			local cam = Workspace.CurrentCamera
+			local root = rootPart()
+			if cam and root then
+				local p = root.Position
+				local back = CFrame.lookAt(
+					Vector3.new(p.X, p.Y + SIDE_Y, p.Z + SIDE_Z),
+					Vector3.new(p.X, p.Y + 1.5, p.Z)
+				)
+				TweenService
+					:Create(cam, TweenInfo.new(0.5, Enum.EasingStyle.Quad), { CFrame = back })
+					:Play()
+			end
+			task.delay(0.5, endBeat)
+		else
+			endBeat() -- freewalk: hand the camera back to the default
 		end
-		task.delay(0.5, endBeat)
 	end)
 end
 
@@ -140,11 +150,7 @@ local function onConversationDone(npc: BasePart)
 		claimed[npc] = true
 		CardController.reveal(Cards[cardId], function()
 			Remotes.event("GrantCard"):FireServer(cardId)
-			if style == "sidescroll" then
-				gateCutscene() -- Act 1: cut to the gate powering on
-			else
-				endBeat()
-			end
+			endBeat() -- the gate's power-on cutscene arrives via GatePoweredOn
 		end)
 	elseif typeof(coins) == "number" and not claimed[npc] then
 		claimed[npc] = true
@@ -188,7 +194,7 @@ local function applyMode()
 	end
 	local pg = player:FindFirstChild("PlayerGui")
 	if pg then
-		for _, name in { "Hotbar", "TowerPanel" } do
+		for _, name in { "Hotbar", "TowerPanel", "HUD" } do
 			local gui = pg:FindFirstChild(name)
 			if gui and gui:IsA("ScreenGui") then
 				gui.Enabled = (mode == "Gauntlet")
@@ -216,6 +222,13 @@ function ExploreController.init()
 		mode = tostring(newMode)
 		style = tostring(newStyle or "sidescroll")
 		applyMode()
+	end)
+
+	-- a gate powered on (Builderman's card, or buying the Sword): cut to it
+	Remotes.event("GatePoweredOn").OnClientEvent:Connect(function(pos)
+		if typeof(pos) == "Vector3" and not busy and not cutscene then
+			gateCutscene(pos)
+		end
 	end)
 
 	player.CharacterAdded:Connect(function()

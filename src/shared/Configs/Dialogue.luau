@@ -196,6 +196,45 @@ local Dialogue: { [string]: Sequence } = {
 		},
 		{ speaker = "You", mood = "Neutral", text = "Deal — if I've got the coins." },
 	},
+	intro2 = {
+		{
+			speaker = "Builderman",
+			mood = "Serious",
+			text = "Deeper in the system now. The Smoothing's had time to compile down here.",
+		},
+		{
+			speaker = "You",
+			mood = "Neutral",
+			text = "Feels heavier. Like the whole sector's holding its breath.",
+		},
+		{
+			speaker = "Builderman",
+			mood = "Neutral",
+			text = "You know the drill — towers off the path, cards when it gets hairy.",
+		},
+		{
+			speaker = "Builderman",
+			mood = "Excited",
+			text = "And you've got STEEL now. Let's scrub this sector clean. GO!",
+		},
+	},
+	chapterEnd2 = {
+		{
+			speaker = "Builderman",
+			mood = "Happy",
+			text = "The Mainframe's rolled back! You actually pulled it off, Moderator.",
+		},
+		{
+			speaker = "You",
+			mood = "Excited",
+			text = "Told you the old tools still had some fight in 'em.",
+		},
+		{
+			speaker = "Builderman",
+			mood = "Neutral",
+			text = "The Smoothing's bigger than two sectors... but you just bought the old world some time.",
+		},
+	},
 }
 
 return Dialogue
