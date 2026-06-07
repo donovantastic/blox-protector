@@ -57,7 +57,45 @@ function DevTestMap.ensure()
 		block(tostring(i), pos, Vector3.new(4, 1, 4), Color3.fromRGB(90, 90, 110), path)
 	end
 
-	print("[DevTestMap] built graybox test map (Spawn, Base, " .. #points .. " waypoints)")
+	-- visible road connecting Spawn -> waypoints -> Base. Purely cosmetic (the enemy
+	-- path + no-build zone come from the waypoints); this just shows where the lane is.
+	local full = { Vector3.new(-60, 1, 0) }
+	for _, p in ipairs(points) do
+		table.insert(full, p)
+	end
+	table.insert(full, Vector3.new(60, 1, 0))
+
+	local road = Instance.new("Folder")
+	road.Name = "Road"
+	road.Parent = map
+	local ROAD_W = 9
+	local ROAD_COLOR = Color3.fromRGB(44, 46, 62)
+	local function seg(name: string, cframe: CFrame, size: Vector3)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false -- don't block placement/selection raycasts
+		p.Size = size
+		p.CFrame = cframe
+		p.Color = ROAD_COLOR
+		p.Material = Enum.Material.SmoothPlastic
+		p.Parent = road
+	end
+	for i = 1, #full - 1 do
+		local a = Vector3.new(full[i].X, 0.6, full[i].Z)
+		local b = Vector3.new(full[i + 1].X, 0.6, full[i + 1].Z)
+		seg(
+			"Seg" .. i,
+			CFrame.lookAt((a + b) / 2, b),
+			Vector3.new(ROAD_W, 0.4, (b - a).Magnitude + ROAD_W)
+		)
+	end
+	for i, p in ipairs(full) do
+		seg("Cap" .. i, CFrame.new(p.X, 0.6, p.Z), Vector3.new(ROAD_W, 0.4, ROAD_W))
+	end
+
+	print("[DevTestMap] built graybox test map (Spawn, Base, " .. #points .. " waypoints + road)")
 end
 
 return DevTestMap
