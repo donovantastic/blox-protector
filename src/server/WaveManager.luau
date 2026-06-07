@@ -106,8 +106,15 @@ function WaveManager.start()
 
 		if playing() then
 			GameState.win()
+			-- play the closing dialogue, then show the end card only after it's dismissed
+			introDone = false
 			playDialogue:FireAllClients(chapter.endKey)
-			task.wait(2.5)
+			local elapsed = 0
+			while not introDone and elapsed < 25 do
+				task.wait(0.2)
+				elapsed += 0.2
+			end
+			task.wait(0.4)
 			showCard:FireAllClients("end", chapter.endCard)
 		end
 		WaveManager.onComplete(GameState.getStatus() == "won")
