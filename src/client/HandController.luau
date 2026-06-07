@@ -5,6 +5,8 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Cards = require(Shared.Configs.Cards)
@@ -20,6 +22,9 @@ local gui: ScreenGui
 local row: Frame
 local mode = "Explore"
 local hand: { string } = {}
+local userHidden = false -- did the player press Tab to tuck the cards away?
+
+local TOGGLE_KEY = Enum.KeyCode.Tab
 
 local function buildCard(cardId: string, order: number)
 	local card = Cards[cardId]
@@ -88,7 +93,9 @@ local function render()
 	for i, cardId in hand do
 		buildCard(cardId, i)
 	end
-	gui.Enabled = (mode == "Gauntlet" and #hand > 0)
+	-- show the hand only in battle, only when you hold cards, and only if you
+	-- haven't tucked it away with Tab
+	gui.Enabled = (mode == "Gauntlet" and #hand > 0 and not userHidden)
 end
 
 function HandController.init()
@@ -111,12 +118,48 @@ function HandController.init()
 	layout.Padding = UDim.new(0, 8)
 	layout.Parent = row
 
+	-- little reminder that Tab tucks the cards away (sits just above the hand;
+	-- it lives on `gui`, not in the card row, so the layout doesn't shuffle it)
+	local hint = Instance.new("TextLabel")
+	hint.AnchorPoint = Vector2.new(1, 1)
+	hint.Position = UDim2.new(1, -16, 1, -180)
+	hint.Size = UDim2.fromOffset(160, 18)
+	hint.BackgroundTransparency = 1
+	hint.Font = Enum.Font.GothamBold
+	hint.TextSize = 13
+	hint.TextXAlignment = Enum.TextXAlignment.Right
+	hint.TextColor3 = Color3.fromRGB(210, 214, 230)
+	hint.TextStrokeTransparency = 0.6
+	hint.Text = "TAB — hide cards"
+	hint.Parent = gui
+
+	-- Tab claims the player-list slot in Roblox; this is a solo game, so turn the
+	-- default leaderboard off so Tab only ever toggles the cards (no flicker).
+	pcall(function()
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+	end)
+
+	-- Tab = tuck the hand away / bring it back. Fires even though Roblox marks Tab
+	-- as "processed" (it's a core-UI key), so we don't gate on gameProcessed — we
+	-- only bow out if the player is typing in a text box.
+	UserInputService.InputBegan:Connect(function(input)
+		if input.KeyCode ~= TOGGLE_KEY then
+			return
+		end
+		if UserInputService:GetFocusedTextBox() then
+			return
+		end
+		userHidden = not userHidden
+		render()
+	end)
+
 	Remotes.event("HandChanged").OnClientEvent:Connect(function(newHand)
 		hand = if typeof(newHand) == "table" then newHand else {}
 		render()
 	end)
 	Remotes.event("ModeChanged").OnClientEvent:Connect(function(newMode)
 		mode = tostring(newMode)
+		userHidden = false -- start each battle with the cards showing
 		render()
 	end)
 end
