@@ -98,6 +98,47 @@ local function buildDrillModel(model: Model, position: Vector3): (Model, BasePar
 		y += segHeight
 	end
 
+	-- Three angled "flutes" (the cutting blades) so the spin is actually visible: a
+	-- smooth cone of discs is perfectly round, so spinning it shows nothing. Off-axis
+	-- blades give the eye something to follow. Three of them, 120° apart, also lets
+	-- the spin loop seamlessly.
+	local pivot = CFrame.new(position) -- the vertical axis through the tower's center
+	local fluteLocal = CFrame.new(1.3, 2.7, 0) * CFrame.Angles(0, 0, math.rad(22)) -- lean in
+	local THIRD = (2 * math.pi) / 3
+	local flutes: { { part: BasePart, rel: CFrame } } = {}
+	for f = 0, 2 do
+		local startAngle = THIRD * f
+		local flute = Instance.new("Part")
+		flute.Name = "Flute" .. (f + 1)
+		flute.Anchored = true
+		flute.CanCollide = false
+		flute.Size = Vector3.new(0.22, 4.6, 0.62)
+		flute.Color = Color3.fromRGB(74, 90, 122) -- darker steel, stands out as it turns
+		flute.Material = Enum.Material.Metal
+		local rel = CFrame.Angles(0, startAngle, 0) * fluteLocal -- where it sits in pivot-space
+		flute.CFrame = pivot * rel
+		flute.Parent = model
+		table.insert(flutes, { part = flute, rel = rel })
+	end
+
+	-- Spin the blades every frame. We recompute each blade's CFrame around the axis
+	-- (true circular motion — a tween would cut straight across the circle instead).
+	-- The connection retires itself once the tower is sold/destroyed.
+	local SPIN_SPEED = 4.2 -- radians/second (~0.7 turns per second)
+	local angle = 0
+	local connection: RBXScriptConnection
+	connection = RunService.Heartbeat:Connect(function(dt: number)
+		if not model.Parent then
+			connection:Disconnect()
+			return
+		end
+		angle += SPIN_SPEED * dt
+		local rot = CFrame.Angles(0, angle, 0)
+		for _, fl in flutes do
+			fl.part.CFrame = pivot * rot * fl.rel
+		end
+	end)
+
 	-- invisible aim point at the tip: TowerService rotates this to face enemies and
 	-- fires the tracer from here, while the cone itself stays standing upright
 	local turret = Instance.new("Part")
