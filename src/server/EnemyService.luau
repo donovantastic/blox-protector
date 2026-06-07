@@ -25,6 +25,9 @@ export type Enemy = {
 	distance: number, -- total studs travelled (for targeting)
 	dead: boolean,
 	bar: Frame?, -- health-bar fill
+	slowMult: number, -- current speed multiplier from paint (1 = normal speed)
+	slowUntil: number, -- os.clock() time the paint wears off (0 = not painted)
+	baseColor: Color3, -- the enemy's normal color, so we can restore it after the paint fades
 }
 
 local EnemyService = {}
@@ -37,6 +40,10 @@ local active: { Enemy } = {}
 local nextId = 0
 local container: Folder
 local frozenUntil = 0 -- Defrag card: all enemies stop moving until this clock time
+
+-- The pink an enemy turns while it's covered in paint (mixed with its own color so
+-- you can still tell enemies apart). Purely visual — it's how you SEE the slow working.
+local PAINT_COLOR = Color3.fromRGB(255, 95, 200)
 
 local GRAYBOX_COLORS: { [string]: Color3 } = {
 	Grunt = Color3.fromRGB(200, 80, 80),
@@ -165,6 +172,9 @@ function EnemyService.spawn(enemyType: string, healthMult: number): Enemy?
 		waypointIndex = 2, -- we start at path[1], walk toward path[2]
 		distance = 0,
 		dead = false,
+		slowMult = 1, -- not painted yet → full speed
+		slowUntil = 0,
+		baseColor = primary.Color,
 	}
 	enemy.bar = buildHealthBar(primary)
 	table.insert(active, enemy)
@@ -200,6 +210,17 @@ function EnemyService.freezeAll(duration: number)
 	frozenUntil = os.clock() + duration
 end
 
+-- Splatter ONE enemy with paint: it moves at `mult` of its speed for `duration`
+-- seconds (the Paint Splatterer tower calls this on every hit). Getting hit again
+-- just refreshes the timer, so steady fire keeps an enemy gummed up the whole time.
+function EnemyService.applySlow(enemy: Enemy, mult: number, duration: number)
+	if enemy.dead then
+		return
+	end
+	enemy.slowMult = mult
+	enemy.slowUntil = os.clock() + duration
+end
+
 -- Move every active enemy one frame along the path.
 function EnemyService.step(dt: number)
 	local path = Map.getPath()
@@ -210,6 +231,16 @@ function EnemyService.step(dt: number)
 			table.remove(active, i)
 			continue
 		end
+
+		-- Paint visual: pink while the slow is active, back to normal once it wears off.
+		local painted = os.clock() < enemy.slowUntil
+		local wantColor = if painted
+			then enemy.baseColor:Lerp(PAINT_COLOR, 0.7)
+			else enemy.baseColor
+		if enemy.primary.Color ~= wantColor then
+			enemy.primary.Color = wantColor
+		end
+
 		if frozen then
 			continue -- defragged: hold position
 		end
@@ -226,7 +257,9 @@ function EnemyService.step(dt: number)
 		local pos = enemy.primary.Position - Vector3.new(0, enemy.primary.Size.Y / 2, 0)
 		local toTarget = target - pos
 		local distLeft = toTarget.Magnitude
-		local step = enemy.def.speed * dt
+		-- paint slows the enemy down: full speed normally, slowMult while painted
+		local speed = if painted then enemy.def.speed * enemy.slowMult else enemy.def.speed
+		local step = speed * dt
 
 		local newGround: Vector3
 		if step >= distLeft then

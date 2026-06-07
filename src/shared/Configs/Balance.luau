@@ -9,7 +9,7 @@ local Balance = {
 
 	-- Starter loadout: the towers unlocked from the start (fill the first slots;
 	-- remaining slots are "locked" placeholders for future unlocks / crates).
-	StarterTowers = { "Pelter", "Sniper", "Splash" },
+	StarterTowers = { "Pelter", "Sniper", "Splash", "Paintball" },
 
 	-- Combat
 	TowerTickRate = 0.05, -- seconds between tower target/fire evaluations

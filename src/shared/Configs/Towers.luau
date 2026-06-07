@@ -15,6 +15,14 @@ export type Level = {
 	cost: number, -- cost to reach THIS level (level 1 = placement cost)
 }
 
+-- A debuff a tower's shot leaves on the enemy it hits. Right now there's one kind:
+-- a SLOW (paint gums the enemy up). slowMult is how fast it moves while painted
+-- (0.5 = half speed); duration is how many seconds the paint lasts before it wears off.
+export type Debuff = {
+	slowMult: number, -- speed multiplier while painted (1 = no slow, 0.5 = half speed)
+	duration: number, -- seconds the slow lasts after a hit
+}
+
 export type Tower = {
 	name: string, -- lore display name
 	desc: string, -- one-line flavor
@@ -24,6 +32,7 @@ export type Tower = {
 	fireRate: number, -- shots per second
 	targeting: string, -- "first" | "last" | "closest" | "strongest"
 	levels: { Level }, -- index = upgrade level (1 = base)
+	debuff: Debuff?, -- optional: a status effect each shot applies (e.g. paint = slow)
 }
 
 local Towers: { [string]: Tower } = {
@@ -69,6 +78,25 @@ local Towers: { [string]: Tower } = {
 			{ range = 14, damage = 7, cost = 80 },
 			{ range = 18, damage = 10, cost = 130 },
 			{ range = 22, damage = 16, cost = 240 },
+		},
+	},
+
+	Paintball = {
+		name = "Paint Splatterer",
+		desc = "Fires gloppy 1x1 paintballs. Low damage, but the splatter gums enemies up so they crawl.",
+		model = "Paintball",
+		cost = 60,
+		placementRadius = 4,
+		fireRate = 1.1, -- a steady stream of paint
+		targeting = "first",
+		-- Soft hits, but the SLOW is the point: a single Splatterer can keep one enemy
+		-- gummed up the whole time (fires every ~0.9s, paint lasts 1.6s → never wears off
+		-- while it keeps shooting). Pair it with a hard-hitting tower behind it.
+		debuff = { slowMult = 0.55, duration = 1.6 }, -- 55% speed for 1.6s after each hit
+		levels = {
+			{ range = 16, damage = 4, cost = 60 },
+			{ range = 20, damage = 6, cost = 90 },
+			{ range = 24, damage = 10, cost = 150 },
 		},
 	},
 

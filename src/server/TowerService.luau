@@ -54,6 +54,7 @@ local GRAYBOX: { [string]: Color3 } = {
 	Sniper = Color3.fromRGB(250, 210, 90),
 	Splash = Color3.fromRGB(150, 120, 240),
 	Sword = Color3.fromRGB(185, 192, 205),
+	Paintball = Color3.fromRGB(255, 95, 200), -- hot pink — matches the paint splatter
 }
 
 -- ---------------------------------------------------------------- model -------
@@ -174,7 +175,13 @@ local function fire(tower: Tower, target: EnemyService.Enemy)
 		target.primary.Position,
 		GRAYBOX[tower.towerType] or Color3.fromRGB(255, 255, 255)
 	)
-	EnemyService.takeDamage(target, level(tower).damage)
+	local killed = EnemyService.takeDamage(target, level(tower).damage)
+	-- if this tower's shot carries a debuff (paint = slow), splatter the enemy —
+	-- but only if it's still alive (no point painting something we just destroyed)
+	local debuff = tower.def.debuff
+	if debuff and not killed then
+		EnemyService.applySlow(target, debuff.slowMult, debuff.duration)
+	end
 end
 
 function TowerService.step(dt: number)
