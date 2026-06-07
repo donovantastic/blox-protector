@@ -54,6 +54,23 @@ local Dialogue: { [string]: Sequence } = {
 			text = "Everything you've got — towers AND that card I gave you. ROLL IT BACK!",
 		},
 	},
+	boss2_intro = {
+		{
+			speaker = "Builderman",
+			mood = "Shocked",
+			text = "...That's not a process. That's the whole MAINFRAME.",
+		},
+		{
+			speaker = "The Mainframe",
+			mood = "Serious",
+			text = "S C A N N I N G . . .   t a r g e t :   e v e r y t h i n g .",
+		},
+		{
+			speaker = "Builderman",
+			mood = "Serious",
+			text = "Bigger than the Compiler. Sword, cards, towers — throw it ALL at it!",
+		},
+	},
 	intro = {
 		{
 			speaker = "Builderman",

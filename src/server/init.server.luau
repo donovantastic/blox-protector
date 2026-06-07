@@ -99,7 +99,7 @@ local function powerOnGate(gatePart: BasePart)
 	end)
 end
 
-local function wireGate(gatePart: BasePart)
+local function wireGate(gatePart: BasePart, hint: string)
 	local sealedDebounce = false
 	gatePart.Touched:Connect(function(hit)
 		if ModeService.get() ~= "Explore" then
@@ -113,7 +113,7 @@ local function wireGate(gatePart: BasePart)
 			ModeService.set("Gauntlet")
 		elseif not sealedDebounce then
 			sealedDebounce = true
-			notify:FireClient(plr, "The gate is sealed — talk to Builderman first.")
+			notify:FireClient(plr, hint)
 			task.delay(3, function()
 				sealedDebounce = false
 			end)
@@ -125,8 +125,11 @@ end
 local stage1 = Workspace:FindFirstChild("ExploreStage")
 local act1Gate = stage1 and stage1:FindFirstChild("Gate")
 if act1Gate and act1Gate:IsA("BasePart") then
-	wireGate(act1Gate)
+	wireGate(act1Gate, "The gate is sealed — talk to Builderman first.")
 end
+
+-- the Act 2 gate (set up when Act 2 builds); buying the Sword powers it on
+local act2Gate: BasePart? = nil
 
 -- ---- progression -------------------------------------------------------------
 local act = 1
@@ -151,12 +154,14 @@ end
 
 ModeService.onChange = function(mode)
 	if mode == "Gauntlet" then
-		-- fresh gauntlet each time
+		-- fresh gauntlet on this act's own map
+		DevTestMap.buildGauntlet(act)
+		Map.init()
 		GameState.reset()
 		Economy.init()
 		TowerService.reset()
 		teleportAll(CFrame.new(0, 6, 55))
-		WaveManager.start(act == 2)
+		WaveManager.start(act, act == 2)
 	end
 end
 
@@ -170,7 +175,11 @@ WaveManager.onComplete = function(won)
 		local stage2 = Workspace:FindFirstChild("ExploreStage2")
 		local gate2 = stage2 and stage2:FindFirstChild("Gate")
 		if gate2 and gate2:IsA("BasePart") then
-			wireGate(gate2)
+			gate2:SetAttribute("Unlocked", false) -- sealed until you buy the Sword
+			gate2.Color = Color3.fromRGB(228, 64, 64)
+			gate2.Material = Enum.Material.Neon
+			act2Gate = gate2
+			wireGate(gate2, "Sealed. Buy the Sword from the Merchant to power it on.")
 		end
 		teleportAll(act2SpawnCFrame())
 		notify:FireAllClients("Sector cleared! A new area opens up — go explore it.")
@@ -286,7 +295,12 @@ Remotes.event("BuyTower").OnServerEvent:Connect(function(player, towerType)
 	end
 	TowerService.unlock(towerType)
 	Remotes.event("TowerUnlocked"):FireAllClients(towerType)
-	notify:FireAllClients("Unlocked the Sword Fighter! It's in your hotbar.")
+	notify:FireAllClients("Unlocked the Sword Fighter! The gate powers on — onward!")
+	-- buying the Sword powers on the sealed Act 2 gate
+	if act2Gate and act2Gate:IsA("BasePart") and not act2Gate:GetAttribute("Unlocked") then
+		act2Gate:SetAttribute("Unlocked", true)
+		powerOnGate(act2Gate)
+	end
 end)
 
 GameState.broadcast()

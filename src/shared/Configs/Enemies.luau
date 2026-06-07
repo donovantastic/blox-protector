@@ -57,6 +57,18 @@ local Enemies: { [string]: Enemy } = {
 		scale = 3.8,
 		boss = true,
 	},
+
+	Boss2 = {
+		name = "The Mainframe",
+		desc = "Where the Smoothing compiles itself. Bigger, slower, and far harder to roll back.",
+		model = "Boss2",
+		health = 720,
+		speed = 4,
+		reward = 400,
+		leakDamage = 100,
+		scale = 4.6,
+		boss = true,
+	},
 }
 
 return Enemies

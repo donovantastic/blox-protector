@@ -68,9 +68,9 @@ local function waitForIntro()
 	end
 end
 
-function WaveManager.start(isFinal: boolean)
+function WaveManager.start(chapterIndex: number, isFinal: boolean)
 	task.spawn(function()
-		local chapter = Chapters[1]
+		local chapter = Chapters[chapterIndex] or Chapters[1]
 
 		showCard:FireAllClients("title", { title = chapter.title, subtitle = chapter.framing })
 		task.wait(3)
@@ -88,10 +88,10 @@ function WaveManager.start(isFinal: boolean)
 				notify:FireAllClients(beat) -- non-blocking; play continues
 			end
 			if waveNumber == chapter.waves then
-				-- final wave: the boss. Banter during the between-wave lull, then it spawns.
-				playDialogue:FireAllClients("boss_intro")
+				-- final wave: the chapter's boss, with banter during the lull.
+				playDialogue:FireAllClients(chapter.bossIntroKey)
 				task.wait(1)
-				EnemyService.spawn("Boss", 1)
+				EnemyService.spawn(chapter.boss, 1)
 			end
 			runWave(waveNumber)
 			if not playing() then

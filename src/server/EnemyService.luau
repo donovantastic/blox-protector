@@ -43,6 +43,7 @@ local GRAYBOX_COLORS: { [string]: Color3 } = {
 	Runner = Color3.fromRGB(240, 200, 70),
 	Brute = Color3.fromRGB(120, 60, 160),
 	Boss = Color3.fromRGB(210, 70, 235),
+	Boss2 = Color3.fromRGB(245, 110, 50),
 }
 
 local function buildModel(def: Enemies.Enemy): (Model, BasePart)

@@ -132,6 +132,9 @@ local function update()
 	local g = ghost :: Ghost
 
 	local pos = groundPoint()
+	if pos then
+		pos = Vector3.new(pos.X, 0, pos.Z) -- ground level: keep the ghost + tower flat
+	end
 	lastPos = pos
 	if not pos then
 		for _, child in ghostFolder:GetChildren() do

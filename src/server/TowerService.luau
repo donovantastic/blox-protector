@@ -222,6 +222,9 @@ function TowerService.place(
 	if not def then
 		return false, "Unknown tower"
 	end
+	-- snap to ground level (the gauntlet floor is flat at y=0) so a high raycast
+	-- hit can never leave the tower floating
+	position = Vector3.new(position.X, 0, position.Z)
 	local ok, reason = PlacementService.validate(
 		towerType,
 		position,
