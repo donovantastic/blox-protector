@@ -120,6 +120,24 @@ local Towers: { [string]: Tower } = {
 		},
 	},
 
+	Drill = {
+		name = "Dev Drill",
+		desc = "A developer's industrial drill. Short reach, but it bores through even the toughest corruption at a blistering rate.",
+		model = "Drill",
+		cost = 150,
+		placementRadius = 4,
+		fireRate = 3.0, -- BRRRR — fires ~3x a second, the fastest tower in the game
+		targeting = "strongest", -- bores into the toughest enemy in range (great vs bosses)
+		-- No gimmick — this one is pure damage. Fast fire rate x solid hits = by far
+		-- the highest damage-per-second we have (~54 -> 126 DPS). Short range is the
+		-- price: you have to place it right on top of the action.
+		levels = {
+			{ range = 12, damage = 18, cost = 150 },
+			{ range = 14, damage = 28, cost = 230 },
+			{ range = 16, damage = 42, cost = 380 },
+		},
+	},
+
 	-- unlocked from the Act 2 Merchant (not a starter)
 	Sword = {
 		name = "Sword Fighter",

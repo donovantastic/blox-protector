@@ -56,6 +56,7 @@ local GRAYBOX: { [string]: Color3 } = {
 	Sword = Color3.fromRGB(185, 192, 205),
 	Paintball = Color3.fromRGB(255, 95, 200), -- hot pink — matches the paint splatter
 	Superball = Color3.fromRGB(120, 235, 90), -- bouncy lime rubber ball
+	Drill = Color3.fromRGB(255, 140, 40), -- molten-orange industrial drill
 }
 
 -- ---------------------------------------------------------------- model -------
