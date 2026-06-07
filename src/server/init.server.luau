@@ -6,6 +6,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
 local Aesthetic = require(script.Aesthetic)
 local ExploreStage = require(script.ExploreStage)
@@ -83,6 +85,60 @@ if gate and gate:IsA("BasePart") then
 	end)
 end
 
+-- "powering on" effect when Builderman unlocks the gate: flicker -> spark burst ->
+-- flash white -> settle to a glowing blue
+local function powerOnGate(gatePart: BasePart)
+	local attach = Instance.new("Attachment")
+	attach.Parent = gatePart
+
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparks.Color = ColorSequence.new(Color3.fromRGB(150, 225, 255), Color3.fromRGB(255, 255, 255))
+	sparks.LightEmission = 1
+	sparks.Size = NumberSequence.new(0.6, 0)
+	sparks.Lifetime = NumberRange.new(0.3, 0.7)
+	sparks.Speed = NumberRange.new(10, 22)
+	sparks.SpreadAngle = Vector2.new(180, 180)
+	sparks.Rate = 0
+	sparks.Parent = attach
+
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(120, 200, 255)
+	light.Range = 20
+	light.Brightness = 0
+	light.Parent = gatePart
+
+	local snd = Instance.new("Sound")
+	snd.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+	snd.Volume = 0.6
+	snd.Parent = gatePart
+
+	task.spawn(function()
+		for _ = 1, 3 do
+			gatePart.Transparency = 0.75
+			task.wait(0.07)
+			gatePart.Transparency = 0.2
+			task.wait(0.07)
+		end
+		pcall(function()
+			snd:Play()
+		end)
+		sparks:Emit(45)
+		light.Brightness = 4
+		gatePart.Color = Color3.fromRGB(255, 255, 255)
+		gatePart.Transparency = 0
+		TweenService:Create(
+			gatePart,
+			TweenInfo.new(0.5, Enum.EasingStyle.Quad),
+			{ Color = Color3.fromRGB(110, 200, 255), Transparency = 0.15 }
+		):Play()
+		TweenService:Create(light, TweenInfo.new(0.9), { Brightness = 1.4 }):Play()
+		task.wait(1.2)
+		attach:Destroy()
+		Debris:AddItem(snd, 2)
+	end)
+end
+
 -- start each player in the right place for the current mode (backstop vs spawn picks)
 local function placeCharacter(char: Model)
 	if ModeService.get() == "Gauntlet" then
@@ -154,9 +210,9 @@ Remotes.event("GrantCard").OnServerEvent:Connect(function(_player, cardId)
 	end
 	CardService.grant(cardId)
 	-- Builderman handing you the card powers on the gate (red -> blue, passable)
-	if gate and gate:IsA("BasePart") then
+	if gate and gate:IsA("BasePart") and not gate:GetAttribute("Unlocked") then
 		gate:SetAttribute("Unlocked", true)
-		gate.Color = Color3.fromRGB(110, 200, 255)
+		powerOnGate(gate)
 	end
 end)
 Remotes.event("PlayCard").OnServerEvent:Connect(function(player, cardId)
