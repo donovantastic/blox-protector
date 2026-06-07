@@ -59,6 +59,60 @@ local GRAYBOX: { [string]: Color3 } = {
 	Drill = Color3.fromRGB(255, 140, 40), -- molten-orange industrial drill
 }
 
+-- A custom graybox for the Drill: a tiered metal cone (a stack of discs that shrink
+-- toward a point), built from Cylinder parts. Each disc is rotated 90° so its flat
+-- faces point up/down — stacking them makes the stepped drill-bit shape. Replaced
+-- automatically if a real "Drill" model is ever added under Assets.Towers.
+local function buildDrillModel(model: Model, position: Vector3): (Model, BasePart)
+	local METAL = Color3.fromRGB(150, 168, 198) -- bluish steel, like the reference
+	local UPRIGHT = CFrame.Angles(0, 0, math.rad(90)) -- stand a cylinder on its end
+
+	-- wide mounting disc on the ground
+	local base = Instance.new("Part")
+	base.Name = "Base"
+	base.Anchored = true
+	base.CanCollide = false
+	base.Shape = Enum.PartType.Cylinder
+	base.Size = Vector3.new(0.8, 5.6, 5.6) -- 0.8 thick, 5.6 across
+	base.CFrame = CFrame.new(position + Vector3.new(0, 0.4, 0)) * UPRIGHT
+	base.Color = METAL:Lerp(Color3.new(0, 0, 0), 0.4)
+	base.Material = Enum.Material.Metal
+	base.Parent = model
+
+	-- the drill itself: discs of shrinking radius stacked into a cone
+	local radii = { 2.2, 1.75, 1.35, 1.0, 0.65, 0.32 }
+	local segHeight = 0.85
+	local y = 0.8 -- start at the top of the base
+	for i, r in radii do
+		local seg = Instance.new("Part")
+		seg.Name = "Bit" .. i
+		seg.Anchored = true
+		seg.CanCollide = false
+		seg.Shape = Enum.PartType.Cylinder
+		seg.Size = Vector3.new(segHeight, r * 2, r * 2)
+		seg.CFrame = CFrame.new(position + Vector3.new(0, y + segHeight / 2, 0)) * UPRIGHT
+		-- lighten toward the tip so the metal catches the light like the picture
+		seg.Color = METAL:Lerp(Color3.fromRGB(228, 234, 246), (i - 1) / #radii * 0.55)
+		seg.Material = Enum.Material.Metal
+		seg.Parent = model
+		y += segHeight
+	end
+
+	-- invisible aim point at the tip: TowerService rotates this to face enemies and
+	-- fires the tracer from here, while the cone itself stays standing upright
+	local turret = Instance.new("Part")
+	turret.Name = "Turret"
+	turret.Anchored = true
+	turret.CanCollide = false
+	turret.Transparency = 1
+	turret.Size = Vector3.new(0.4, 0.4, 1.2) -- thin; -Z is the "barrel" for the muzzle
+	turret.Position = position + Vector3.new(0, y, 0)
+	turret.Parent = model
+
+	model.PrimaryPart = base
+	return model, turret
+end
+
 -- ---------------------------------------------------------------- model -------
 local function buildTower(
 	def: Towers.Tower,
@@ -83,6 +137,11 @@ local function buildTower(
 		clone:PivotTo(CFrame.new(position))
 		local turret = clone:FindFirstChild("Turret")
 		return clone, (turret :: BasePart?) or clone.PrimaryPart :: BasePart
+	end
+
+	-- the Drill gets a hand-built cone graybox instead of the plain box
+	if towerType == "Drill" then
+		return buildDrillModel(model, position)
 	end
 
 	local base = Instance.new("Part")
