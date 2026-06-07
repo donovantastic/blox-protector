@@ -48,12 +48,14 @@ local Enemies: { [string]: Enemy } = {
 
 	Pin = {
 		name = "The Pushpin",
-		desc = "A smug little push-pin with a drill for a head. Thinks it can just stick around forever.",
+		desc = "A smug push-pin tank with a drill for a head. Rolls in on treads and refuses to be deleted.",
 		model = "Pin",
-		health = 52,
-		speed = 9,
-		reward = 20,
-		leakDamage = 3,
+		health = 220, -- elite: way tankier than a normal mob
+		speed = 6, -- heavy treads = slow
+		reward = 120, -- worth the effort to bring down
+		leakDamage = 10, -- a big bite if it reaches the Core, but not instant-death
+		scale = 2.6, -- scaled up — a proper big elite
+		boss = true, -- gets the boss healthbar + "Boss" tag (your Drill targets it first)
 	},
 
 	Boss = {

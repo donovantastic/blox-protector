@@ -227,6 +227,11 @@ local function buildPinEnemy(def: Enemies.Enemy): (Model, BasePart)
 	)
 
 	model.PrimaryPart = body
+	-- grow the whole model as one (bosses are big). ScaleTo scales every part around
+	-- the pivot, so the proportions stay exactly the same — just bigger.
+	if def.scale then
+		model:ScaleTo(def.scale)
+	end
 	return model, body
 end
 
