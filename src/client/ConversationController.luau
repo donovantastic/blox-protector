@@ -47,8 +47,8 @@ local function silhouette(parent: Instance, onLeft: boolean): TextLabel
 	head.Parent = holder
 
 	local name = Instance.new("TextLabel")
-	name.Size = UDim2.fromScale(1.2, 0.09)
-	name.Position = UDim2.fromScale(-0.1, 1.02)
+	name.Size = UDim2.fromScale(1.2, 0.08)
+	name.Position = UDim2.fromScale(-0.1, -0.12) -- above the figure (clear of the bottom box)
 	name.BackgroundTransparency = 1
 	name.Font = Enum.Font.GothamBlack
 	name.TextScaled = true

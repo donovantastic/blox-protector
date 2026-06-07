@@ -8,8 +8,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared").Remotes)
 local ClientState = require(script.Parent.ClientState)
+local SoundController = require(script.Parent.SoundController)
 
 local UIController = {}
+local lastStatus: string?
 
 local function chip(parent: Instance, order: number, color: Color3): TextLabel
 	local frame = Instance.new("Frame")
@@ -87,6 +89,15 @@ function UIController.init()
 		cash.Text = "$ " .. state.cash
 		wave.Text = "Wave " .. state.wave
 		hp.Text = "Base " .. state.baseHP .. " / " .. state.maxBaseHP
+		local currentStatus = tostring(state.status)
+		if currentStatus ~= lastStatus then
+			if currentStatus == "lost" then
+				SoundController.play("defeat")
+			elseif currentStatus == "won" then
+				SoundController.play("victory")
+			end
+			lastStatus = currentStatus
+		end
 		if state.status == "lost" then
 			status.Text = "GAME OVER"
 			status.TextColor3 = Color3.fromRGB(240, 90, 90)

@@ -102,6 +102,7 @@ local function talk(npc: BasePart)
 		local cardId = npc:GetAttribute("GivesCard")
 		if typeof(cardId) == "string" and Cards[cardId] and not givenCards[cardId] then
 			givenCards[cardId] = true
+			Remotes.event("GrantCard"):FireServer(cardId)
 			CardController.reveal(Cards[cardId])
 		end
 	end)

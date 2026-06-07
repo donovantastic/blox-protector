@@ -11,6 +11,8 @@ export type Enemy = {
 	speed: number, -- studs/second along the path
 	reward: number, -- in-round cash granted on kill
 	leakDamage: number, -- base HP lost if it reaches the Database Core
+	scale: number?, -- graybox size multiplier (default 1); bosses are big
+	boss: boolean?, -- true for the chapter boss
 }
 
 local Enemies: { [string]: Enemy } = {
@@ -42,6 +44,18 @@ local Enemies: { [string]: Enemy } = {
 		speed = 7,
 		reward = 24,
 		leakDamage = 3,
+	},
+
+	Boss = {
+		name = "The Compiler",
+		desc = "The Great Smoothing, compiled into one entity. Roll it back before it overwrites the server.",
+		model = "Boss",
+		health = 420,
+		speed = 5,
+		reward = 250,
+		leakDamage = 100, -- if it reaches the Core, you're done
+		scale = 3.8,
+		boss = true,
 	},
 }
 

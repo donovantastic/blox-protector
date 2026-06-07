@@ -7,6 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Remotes = require(game.ReplicatedStorage:WaitForChild("Shared").Remotes)
 local Dialogue = require(ReplicatedStorage.Shared.Configs.Dialogue)
+local SoundController = require(script.Parent.SoundController)
 
 local DialogueController = {}
 
@@ -76,6 +77,9 @@ local function showLine(line: Line, token: number)
 			break
 		end
 		textLabel.Text = table.concat(chars, "", 1, i)
+		if i % 2 == 0 then
+			SoundController.play("blip")
+		end
 		task.wait(1 / CHARS_PER_SECOND)
 	end
 

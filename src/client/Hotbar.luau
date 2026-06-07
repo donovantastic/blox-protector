@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Towers = require(Shared.Configs.Towers)
 local Balance = require(Shared.Configs.Balance)
 local ClientState = require(script.Parent.ClientState)
+local SoundController = require(script.Parent.SoundController)
 
 local player = Players.LocalPlayer
 
@@ -36,6 +37,7 @@ local function selectSlot(index: number)
 	else
 		ClientState.setSelected(slot.towerType)
 	end
+	SoundController.play("uiClick")
 end
 
 local function buildSlot(parent: Instance, index: number, towerType: string?): Slot

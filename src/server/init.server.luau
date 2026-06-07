@@ -17,6 +17,7 @@ local EnemyService = require(script.EnemyService)
 local TowerService = require(script.TowerService)
 local WaveManager = require(script.WaveManager)
 local ModeService = require(script.ModeService)
+local CardService = require(script.CardService)
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared").Remotes)
 
@@ -102,6 +103,21 @@ end)
 Remotes.event("RequestState").OnServerEvent:Connect(function()
 	GameState.broadcast()
 	ModeService.broadcast()
+	CardService.broadcast()
+end)
+
+-- card remotes
+Remotes.event("GrantCard").OnServerEvent:Connect(function(_player, cardId)
+	if typeof(cardId) ~= "string" then
+		return
+	end
+	CardService.grant(cardId)
+end)
+Remotes.event("PlayCard").OnServerEvent:Connect(function(player, cardId)
+	if typeof(cardId) ~= "string" then
+		return
+	end
+	report(player, CardService.play(player, cardId))
 end)
 
 GameState.broadcast()

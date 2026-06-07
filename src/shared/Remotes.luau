@@ -20,6 +20,9 @@ local EVENTS = {
 	"SellTower",
 	"DialogueDone", -- () client finished the intro sequence; server may start waves
 	"RequestState", -- () client HUD is ready; server replies with a state snapshot
+	"GrantCard", -- (cardId: string) client claims a card an NPC handed over
+	"PlayCard", -- (cardId: string) play a card; server auto-targets (boss / strongest)
+	"HandChanged", -- (hand: {string}) server -> client: current hand of card ids
 }
 
 local Remotes = {}

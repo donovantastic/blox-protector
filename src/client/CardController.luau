@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local Remotes = require(game.ReplicatedStorage:WaitForChild("Shared").Remotes)
+local SoundController = require(script.Parent.SoundController)
 
 local CardController = {}
 
@@ -269,6 +270,7 @@ function CardController.reveal(card: any)
 	if not revealGui then
 		buildReveal()
 	end
+	SoundController.play("cardReveal")
 	local g = revealGui :: ScreenGui
 	revealRarity.Text = string.upper(tostring(card.rarity)) .. " CARD"
 	revealName.Text = tostring(card.name)

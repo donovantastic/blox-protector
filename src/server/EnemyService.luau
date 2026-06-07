@@ -41,6 +41,7 @@ local GRAYBOX_COLORS: { [string]: Color3 } = {
 	Grunt = Color3.fromRGB(200, 80, 80),
 	Runner = Color3.fromRGB(240, 200, 70),
 	Brute = Color3.fromRGB(120, 60, 160),
+	Boss = Color3.fromRGB(210, 70, 235),
 }
 
 local function buildModel(def: Enemies.Enemy): (Model, BasePart)
@@ -61,7 +62,7 @@ local function buildModel(def: Enemies.Enemy): (Model, BasePart)
 
 	-- graybox fallback
 	local part = Instance.new("Part")
-	part.Size = Vector3.new(2, 2, 2)
+	part.Size = Vector3.new(2, 2, 2) * (def.scale or 1)
 	part.Color = GRAYBOX_COLORS[def.model] or Color3.fromRGB(200, 80, 80)
 	part.Material = Enum.Material.SmoothPlastic
 	part.Anchored = true
@@ -147,8 +148,10 @@ function EnemyService.spawn(enemyType: string, healthMult: number): Enemy?
 
 	primary.CFrame = CFrame.new(path[1] + Vector3.new(0, primary.Size.Y / 2, 0))
 	model.Parent = container
+	model:SetAttribute("EnemyId", nextId)
 	model:SetAttribute("Health", hp)
 	model:SetAttribute("MaxHealth", hp)
+	model:SetAttribute("Boss", def.boss == true)
 
 	local enemy: Enemy = {
 		id = nextId,
@@ -235,9 +238,19 @@ function EnemyService.step(dt: number)
 	end
 end
 
--- For TowerService (Phase 2) targeting.
+-- For TowerService targeting.
 function EnemyService.getActive(): { Enemy }
 	return active
+end
+
+-- For card targeting: find a live enemy by its EnemyId.
+function EnemyService.getById(id: number): Enemy?
+	for _, e in active do
+		if e.id == id and not e.dead then
+			return e
+		end
+	end
+	return nil
 end
 
 return EnemyService

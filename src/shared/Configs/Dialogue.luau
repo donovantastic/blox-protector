@@ -37,6 +37,23 @@ local Dialogue: { [string]: Sequence } = {
 		},
 		{ speaker = "You", mood = "Excited", text = "A card? Neat. Let's go save the server." },
 	},
+	boss_intro = {
+		{
+			speaker = "Builderman",
+			mood = "Shocked",
+			text = "...It's here. The Compiler — the whole Smoothing, compiled into one thing.",
+		},
+		{
+			speaker = "The Compiler",
+			mood = "Serious",
+			text = "h e l l o   w o r l d .   i n i t i a l i z i n g   o v e r w r i t e . . .",
+		},
+		{
+			speaker = "Builderman",
+			mood = "Serious",
+			text = "Everything you've got — towers AND that card I gave you. ROLL IT BACK!",
+		},
+	},
 	intro = {
 		{
 			speaker = "Builderman",

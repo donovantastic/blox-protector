@@ -87,6 +87,12 @@ function WaveManager.start()
 			if beat then
 				notify:FireAllClients(beat) -- non-blocking; play continues
 			end
+			if waveNumber == chapter.waves then
+				-- final wave: the boss. Banter during the between-wave lull, then it spawns.
+				playDialogue:FireAllClients("boss_intro")
+				task.wait(1)
+				EnemyService.spawn("Boss", 1)
+			end
 			runWave(waveNumber)
 			if not playing() then
 				break

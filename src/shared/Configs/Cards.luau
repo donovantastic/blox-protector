@@ -19,7 +19,7 @@ local Cards: { [string]: Card } = {
 		desc = "Revert a target to an earlier, weaker build. Heavy damage — save it for something big.",
 		rarity = "Starter",
 		effect = "damage",
-		power = 60,
+		power = 150,
 	},
 }
 
