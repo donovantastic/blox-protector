@@ -18,6 +18,7 @@ local EVENTS = {
 	"UpgradeTower",
 	"SellTower",
 	"DialogueDone", -- () client finished the intro sequence; server may start waves
+	"RequestState", -- () client HUD is ready; server replies with a state snapshot
 }
 
 local Remotes = {}

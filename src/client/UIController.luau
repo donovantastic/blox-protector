@@ -129,6 +129,9 @@ function UIController.init()
 			end
 		end)
 	end)
+
+	-- HUD ready -> ask the server for current state (robust vs join/load timing)
+	Remotes.event("RequestState"):FireServer()
 end
 
 return UIController

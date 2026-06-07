@@ -11,7 +11,7 @@ export type Chapter = {
 	waves: number, -- survive this many waves to complete the chapter (then VICTORY)
 	introKey: string, -- dialogue key played before wave 1
 	endKey: string, -- dialogue key played on completion
-	beats: { [number]: string }, -- waveNumber -> dialogue key (fired at that wave's start)
+	beats: { [number]: string }, -- waveNumber -> non-blocking toast text (fired at that wave's start)
 	endCard: EndCard,
 }
 
@@ -23,7 +23,10 @@ local Chapters: { Chapter } = {
 		waves = 8,
 		introKey = "intro",
 		endKey = "chapterEnd",
-		beats = { [3] = "wave3", [5] = "wave5" },
+		beats = {
+			[3] = "Heads up — the Glitch is multi-threading! They're coming in pairs now!",
+			[5] = "That's a LOT of syntax errors incoming... keep building or we crash!",
+		},
 		endCard = {
 			title = "CHAPTER 1 COMPLETE — Crossroads Restored!",
 			teaser = "Next time... Chapter 2: The Haunted Mansion of 1x1x1x1.",

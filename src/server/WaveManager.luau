@@ -19,6 +19,7 @@ local BREATHER = 4 -- seconds between waves
 local introDone = false
 local playDialogue = Remotes.event("PlayDialogue")
 local showCard = Remotes.event("ShowCard")
+local notify = Remotes.event("Notify") -- mid-wave beats use the NON-blocking toast
 
 -- called by init.server when a client reports the intro sequence finished
 function WaveManager.markIntroDone()
@@ -80,7 +81,7 @@ function WaveManager.start()
 			GameState.setWave(waveNumber)
 			local beat = chapter.beats[waveNumber]
 			if beat then
-				playDialogue:FireAllClients(beat)
+				notify:FireAllClients(beat) -- non-blocking; play continues
 			end
 			runWave(waveNumber)
 			if not playing() then

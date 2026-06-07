@@ -171,10 +171,12 @@ end
 function TowerService.step(dt: number)
 	local enemies = EnemyService.getActive()
 	for _, tower in towers do
+		if tower.cooldown > 0 then
+			tower.cooldown = math.max(0, tower.cooldown - dt) -- reload even while idle
+		end
 		local target = pickTarget(tower, enemies)
 		if target then
 			aim(tower, target.primary.Position)
-			tower.cooldown -= dt
 			if tower.cooldown <= 0 then
 				fire(tower, target)
 				tower.cooldown = 1 / tower.def.fireRate

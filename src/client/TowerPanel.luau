@@ -86,7 +86,7 @@ local function refresh()
 	local pos = model:GetPivot().Position
 	ring.Transparency = 0.75
 	ring.Size = Vector3.new(0.2, lv.range * 2, lv.range * 2)
-	ring.CFrame = CFrame.new(Vector3.new(pos.X, pos.Y - 1.5, pos.Z))
+	ring.CFrame = CFrame.new(Vector3.new(pos.X, pos.Y - 0.4, pos.Z))
 		* CFrame.Angles(0, 0, math.rad(90))
 	panel.Visible = true
 end

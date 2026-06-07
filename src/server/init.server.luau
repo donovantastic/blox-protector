@@ -66,6 +66,11 @@ Remotes.event("DialogueDone").OnServerEvent:Connect(function()
 	WaveManager.markIntroDone()
 end)
 
+-- client HUD is ready -> send it the current state snapshot
+Remotes.event("RequestState").OnServerEvent:Connect(function()
+	GameState.broadcast()
+end)
+
 GameState.broadcast()
 WaveManager.start()
 
