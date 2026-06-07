@@ -1,24 +1,23 @@
 --!strict
--- Tower definitions. ALL tower balance lives here — add a tower = add an entry
--- + a graybox model named the same as `model` under ReplicatedStorage.Assets.Towers.
+-- Tower definitions (BLOX PROTECTOR — classic-Roblox defenders vs "The Moderns").
+-- ALL tower balance lives here — add a tower = add an entry + a graybox model named
+-- the same as `model` under ReplicatedStorage.Assets.Towers.
 --
--- Two radii per Christian's design:
---   placementRadius : fixed footprint (studs). Used to validate placement (must
---                     fit in a BuildZone, off the path, not overlapping another
---                     tower). Does NOT change with upgrades.
+-- Two radii per the design:
+--   placementRadius : fixed footprint (studs). Validates placement (off the path,
+--                     no overlap). Never changes with upgrades.
 --   range           : attack radius (studs). GROWS with each upgrade level.
---
--- `levels[1]` is the base tower; placing costs `cost`. Each later level costs its
--- own `cost` to upgrade into.
+-- `levels[1]` is the base tower; placing costs `levels[1].cost` (== `cost`).
 
 export type Level = {
 	range: number, -- attack radius (studs)
 	damage: number, -- damage per shot
-	cost: number, -- cost to reach THIS level (level 1 = placement cost is `Tower.cost`)
+	cost: number, -- cost to reach THIS level (level 1 = placement cost)
 }
 
 export type Tower = {
-	name: string,
+	name: string, -- lore display name
+	desc: string, -- one-line flavor
 	model: string, -- name under ReplicatedStorage.Assets.Towers (graybox to start)
 	cost: number, -- in-round cash to place (level 1)
 	placementRadius: number, -- fixed footprint, never changes
@@ -29,25 +28,27 @@ export type Tower = {
 
 local Towers: { [string]: Tower } = {
 	Pelter = {
-		name = "Pelter",
+		name = "Brick Slinger",
+		desc = "A yellow-headed volunteer chucking 1x1 plastic cubes with surprising accuracy.",
 		model = "Pelter",
 		cost = 50,
 		placementRadius = 4,
 		fireRate = 1.0,
 		targeting = "first",
 		levels = {
-			{ range = 16, damage = 4, cost = 50 }, -- base (placement)
+			{ range = 16, damage = 4, cost = 50 },
 			{ range = 20, damage = 7, cost = 75 },
 			{ range = 26, damage = 12, cost = 140 },
 		},
 	},
 
 	Sniper = {
-		name = "Sniper",
+		name = "Rocket Trooper",
+		desc = "Armed with an '08 launcher — takes his time to aim, but his 'Oof' is final.",
 		model = "Sniper",
 		cost = 120,
 		placementRadius = 4,
-		fireRate = 0.4, -- slow but hits hard + long range
+		fireRate = 0.4,
 		targeting = "strongest",
 		levels = {
 			{ range = 40, damage = 18, cost = 120 },
@@ -57,14 +58,15 @@ local Towers: { [string]: Tower } = {
 	},
 
 	Splash = {
-		name = "Splash",
+		name = "Bomb Bloxer",
+		desc = "Lobs a physics-defying black bomb for a very classic (and very loud) boom.",
 		model = "Splash",
 		cost = 90,
-		placementRadius = 5, -- bigger footprint
+		placementRadius = 5,
 		fireRate = 0.8,
 		targeting = "closest",
 		levels = {
-			{ range = 14, damage = 6, cost = 90 }, -- (splash AoE handled in TowerService later)
+			{ range = 14, damage = 6, cost = 90 },
 			{ range = 18, damage = 10, cost = 130 },
 			{ range = 22, damage = 16, cost = 240 },
 		},

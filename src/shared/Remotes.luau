@@ -11,10 +11,13 @@ local EVENTS = {
 	-- server -> client
 	"StateChanged", -- {wave, baseHP, maxBaseHP, cash, status}
 	"Notify", -- (message: string) small toast
-	-- client -> server (tower milestone)
+	"PlayDialogue", -- (sequenceKey: string) play a Dialogue[key] sequence
+	"ShowCard", -- (kind: string, data: table) title / end card
+	-- client -> server
 	"PlaceTower",
 	"UpgradeTower",
 	"SellTower",
+	"DialogueDone", -- () client finished the intro sequence; server may start waves
 }
 
 local Remotes = {}

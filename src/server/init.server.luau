@@ -4,6 +4,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Aesthetic = require(script.Aesthetic)
 local DevTestMap = require(script.DevTestMap)
 local Map = require(script.Map)
 local GameState = require(script.GameState)
@@ -14,6 +15,7 @@ local WaveManager = require(script.WaveManager)
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared").Remotes)
 
+Aesthetic.apply()
 DevTestMap.ensure() -- dev-only: builds a graybox map if none exists (Studio)
 Map.init()
 Economy.init()
@@ -57,6 +59,11 @@ Remotes.event("SellTower").OnServerEvent:Connect(function(player, towerId)
 		return
 	end
 	report(player, TowerService.sell(player, towerId))
+end)
+
+-- client reports the intro dialogue finished -> waves may begin
+Remotes.event("DialogueDone").OnServerEvent:Connect(function()
+	WaveManager.markIntroDone()
 end)
 
 GameState.broadcast()

@@ -1,20 +1,22 @@
 --!strict
--- Enemy definitions. Add an enemy = add an entry + a graybox model named the same
--- as `model` under ReplicatedStorage.Assets.Enemies. Per-wave scaling (health
--- multiplier, etc.) is applied by WaveManager, not baked in here.
+-- Enemy definitions (BLOX PROTECTOR — "The Moderns" / corruption mobs). Add an enemy
+-- = add an entry + a graybox model named the same as `model` under
+-- ReplicatedStorage.Assets.Enemies. Per-wave scaling is applied by WaveManager.
 
 export type Enemy = {
-	name: string,
-	model: string, -- name under ReplicatedStorage.Assets.Enemies
+	name: string, -- lore display name
+	desc: string, -- one-line flavor
+	model: string, -- name under ReplicatedStorage.Assets.Enemies (also graybox color key)
 	health: number, -- base health (wave scaling multiplies this)
 	speed: number, -- studs/second along the path
 	reward: number, -- in-round cash granted on kill
-	leakDamage: number, -- base HP lost if it reaches the end
+	leakDamage: number, -- base HP lost if it reaches the Database Core
 }
 
 local Enemies: { [string]: Enemy } = {
 	Grunt = {
-		name = "Grunt",
+		name = "Shiny Crawler",
+		desc = "A jittery blob with 100% Reflectance. Too smooth for this world.",
 		model = "Grunt",
 		health = 10,
 		speed = 14,
@@ -23,19 +25,21 @@ local Enemies: { [string]: Enemy } = {
 	},
 
 	Runner = {
-		name = "Runner",
+		name = "Lag-Walker",
+		desc = "A flickering entity that appears to move at 2 frames per second.",
 		model = "Runner",
 		health = 7,
-		speed = 24, -- fast, low health
+		speed = 24,
 		reward = 6,
 		leakDamage = 1,
 	},
 
 	Brute = {
-		name = "Brute",
+		name = "Mesh-Tank",
+		desc = "A high-poly monstrosity that refuses to be garbage-collected.",
 		model = "Brute",
 		health = 45,
-		speed = 9, -- slow tank
+		speed = 9,
 		reward = 18,
 		leakDamage = 3,
 	},
