@@ -4,9 +4,11 @@
 local UIController = require(script.UIController)
 local Hotbar = require(script.Hotbar)
 local PlacementController = require(script.PlacementController)
+local TowerPanel = require(script.TowerPanel)
 
 UIController.init()
 Hotbar.init()
 PlacementController.init()
+TowerPanel.init()
 
-print("[Client] HUD + hotbar + placement ready")
+print("[Client] HUD + hotbar + placement + tower panel ready")
