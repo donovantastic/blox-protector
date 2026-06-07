@@ -14,7 +14,7 @@ local gui: ScreenGui
 local backdrop: Frame
 local npcNameLabel: TextLabel
 
-local SILHOUETTE = Color3.fromRGB(14, 16, 24)
+local SILHOUETTE = Color3.fromRGB(8, 8, 14) -- near-black figures, read against the bright backlit backdrop
 
 local function corner(parent: Instance, r: number)
 	local c = Instance.new("UICorner")
@@ -52,8 +52,8 @@ local function silhouette(parent: Instance, onLeft: boolean): TextLabel
 	name.BackgroundTransparency = 1
 	name.Font = Enum.Font.GothamBlack
 	name.TextScaled = true
-	name.TextColor3 = Color3.fromRGB(235, 238, 245)
-	name.TextStrokeTransparency = 0.5
+	name.TextColor3 = Color3.fromRGB(255, 255, 255)
+	name.TextStrokeTransparency = 0 -- solid dark outline so it reads on the bright backdrop
 	name.Parent = holder
 	return name
 end
@@ -69,11 +69,12 @@ function ConversationController.init()
 
 	backdrop = Instance.new("Frame")
 	backdrop.Size = UDim2.fromScale(1, 1)
-	backdrop.BackgroundColor3 = Color3.fromRGB(28, 32, 52)
+	backdrop.BackgroundColor3 = Color3.fromRGB(96, 116, 210)
 	backdrop.BorderSizePixel = 0
 	backdrop.Parent = gui
 	local grad = Instance.new("UIGradient")
-	grad.Color = ColorSequence.new(Color3.fromRGB(40, 46, 74), Color3.fromRGB(12, 14, 22))
+	-- bright at top -> medium at bottom: a backlit "sky" so the dark figures pop
+	grad.Color = ColorSequence.new(Color3.fromRGB(154, 178, 255), Color3.fromRGB(72, 60, 124))
 	grad.Rotation = 90
 	grad.Parent = backdrop
 
@@ -86,7 +87,7 @@ function ConversationController.start(name: string)
 	npcNameLabel.Text = name
 	gui.Enabled = true
 	backdrop.BackgroundTransparency = 1
-	TweenService:Create(backdrop, TweenInfo.new(0.25), { BackgroundTransparency = 0.04 }):Play()
+	TweenService:Create(backdrop, TweenInfo.new(0.25), { BackgroundTransparency = 0 }):Play()
 end
 
 function ConversationController.stop()
