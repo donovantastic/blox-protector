@@ -11,6 +11,7 @@ local Economy = require(script.Parent.EconomyService)
 local GameState = {}
 
 local MAX_BASE_HP = 100
+local DEV_NO_LOSE = true -- dev test: base takes damage for feedback but never actually loses
 
 local baseHP = MAX_BASE_HP
 local wave = 0
@@ -57,7 +58,7 @@ function GameState.damageBase(amount: number)
 	if status ~= "playing" then
 		return
 	end
-	baseHP = math.max(0, baseHP - amount)
+	baseHP = math.max(if DEV_NO_LOSE then 1 else 0, baseHP - amount)
 	if baseHP <= 0 then
 		status = "lost"
 	end

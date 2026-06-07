@@ -57,16 +57,28 @@ WaveManager.onComplete = function(won)
 	end
 end
 
--- the Gate in the exploration lane: touching it locks into the gauntlet
+-- the Gate: sealed (red) until Builderman powers it on; then touching it locks in
+local notify = Remotes.event("Notify")
 local stage = Workspace:FindFirstChild("ExploreStage")
 local gate = stage and stage:FindFirstChild("Gate")
 if gate and gate:IsA("BasePart") then
+	local sealedDebounce = false
 	gate.Touched:Connect(function(hit)
 		if ModeService.get() ~= "Explore" then
 			return
 		end
-		if Players:GetPlayerFromCharacter(hit.Parent) then
+		local plr = Players:GetPlayerFromCharacter(hit.Parent)
+		if not plr then
+			return
+		end
+		if gate:GetAttribute("Unlocked") then
 			ModeService.set("Gauntlet")
+		elseif not sealedDebounce then
+			sealedDebounce = true
+			notify:FireClient(plr, "The gate is sealed — talk to Builderman first.")
+			task.delay(3, function()
+				sealedDebounce = false
+			end)
 		end
 	end)
 end
@@ -102,7 +114,6 @@ for _, plr in Players:GetPlayers() do
 end
 
 -- tower remotes (validate types; reject + Notify on failure)
-local notify = Remotes.event("Notify")
 local function report(player: Player, ok: boolean, reason: string)
 	if not ok then
 		notify:FireClient(player, reason)
@@ -142,6 +153,11 @@ Remotes.event("GrantCard").OnServerEvent:Connect(function(_player, cardId)
 		return
 	end
 	CardService.grant(cardId)
+	-- Builderman handing you the card powers on the gate (red -> blue, passable)
+	if gate and gate:IsA("BasePart") then
+		gate:SetAttribute("Unlocked", true)
+		gate.Color = Color3.fromRGB(110, 200, 255)
+	end
 end)
 Remotes.event("PlayCard").OnServerEvent:Connect(function(player, cardId)
 	if typeof(cardId) ~= "string" then

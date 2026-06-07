@@ -101,12 +101,13 @@ function ExploreStage.ensure()
 		"Gate",
 		CFrame.new(-78, 4, 0),
 		Vector3.new(2, 8, 12),
-		Color3.fromRGB(120, 200, 255),
+		Color3.fromRGB(228, 64, 64),
 		stage
 	)
 	gate.Material = Enum.Material.Neon
-	gate.Transparency = 0.25
+	gate.Transparency = 0.2
 	gate:SetAttribute("IsGate", true)
+	gate:SetAttribute("Unlocked", false) -- red + sealed until Builderman powers it on
 end
 
 return ExploreStage
