@@ -378,6 +378,9 @@ function TowerService.place(
 end
 
 function TowerService.upgrade(_player: Player, towerId: number): (boolean, string)
+	if GameState.getStatus() ~= "playing" then
+		return false, "Round's over"
+	end
 	local tower = towers[towerId]
 	if not tower then
 		return false, "No such tower"
@@ -396,6 +399,9 @@ function TowerService.upgrade(_player: Player, towerId: number): (boolean, strin
 end
 
 function TowerService.sell(_player: Player, towerId: number): (boolean, string)
+	if GameState.getStatus() ~= "playing" then
+		return false, "Round's over"
+	end
 	local tower = towers[towerId]
 	if not tower then
 		return false, "No such tower"
