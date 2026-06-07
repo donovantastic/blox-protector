@@ -55,6 +55,7 @@ local GRAYBOX: { [string]: Color3 } = {
 	Splash = Color3.fromRGB(150, 120, 240),
 	Sword = Color3.fromRGB(185, 192, 205),
 	Paintball = Color3.fromRGB(255, 95, 200), -- hot pink — matches the paint splatter
+	Superball = Color3.fromRGB(120, 235, 90), -- bouncy lime rubber ball
 }
 
 -- ---------------------------------------------------------------- model -------
@@ -181,6 +182,10 @@ local function fire(tower: Tower, target: EnemyService.Enemy)
 	local debuff = tower.def.debuff
 	if debuff and not killed then
 		EnemyService.applySlow(target, debuff.slowMult, debuff.duration)
+	end
+	-- superball: bounce the enemy back down the path (skip if we just killed it)
+	if tower.def.knockback and not killed then
+		EnemyService.knockback(target, tower.def.knockback)
 	end
 end
 

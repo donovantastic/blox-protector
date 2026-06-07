@@ -33,6 +33,7 @@ export type Tower = {
 	targeting: string, -- "first" | "last" | "closest" | "strongest"
 	levels: { Level }, -- index = upgrade level (1 = base)
 	debuff: Debuff?, -- optional: a status effect each shot applies (e.g. paint = slow)
+	knockback: number?, -- optional: studs to bounce the enemy BACKWARD along the path
 }
 
 local Towers: { [string]: Tower } = {
@@ -97,6 +98,25 @@ local Towers: { [string]: Tower } = {
 			{ range = 16, damage = 4, cost = 60 },
 			{ range = 20, damage = 6, cost = 90 },
 			{ range = 24, damage = 10, cost = 150 },
+		},
+	},
+
+	Superball = {
+		name = "Super Bouncer",
+		desc = "Fires a hyper-bouncy rubber ball that smacks enemies backward down the path.",
+		model = "Superball",
+		cost = 75,
+		placementRadius = 4,
+		fireRate = 0.9, -- slowish, but every hit sends them flying back
+		targeting = "first", -- hit the leader and bowl it back into the crowd
+		-- Light damage — the KNOCKBACK is the weapon. 8 studs back per hit roughly
+		-- cancels a normal enemy's progress between shots, and outright bullies slow
+		-- heavy enemies (a Mesh-Tank can get stuck bouncing in place). Tweak freely.
+		knockback = 8, -- studs pushed back along the path each shot
+		levels = {
+			{ range = 18, damage = 5, cost = 75 },
+			{ range = 22, damage = 8, cost = 120 },
+			{ range = 26, damage = 14, cost = 200 },
 		},
 	},
 

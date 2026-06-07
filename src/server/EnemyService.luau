@@ -221,6 +221,43 @@ function EnemyService.applySlow(enemy: Enemy, mult: number, duration: number)
 	enemy.slowUntil = os.clock() + duration
 end
 
+-- Bounce ONE enemy `studs` BACKWARD along the path (the Superball tower). We don't
+-- shove it in a straight line — we walk it back along the waypoints it already
+-- passed, stepping past earlier waypoints if the hit is big enough, and stopping at
+-- the spawn (it can't be knocked off the start of the track).
+function EnemyService.knockback(enemy: Enemy, studs: number)
+	if enemy.dead then
+		return
+	end
+	local path = Map.getPath()
+	if #path == 0 then
+		return
+	end
+	local half = enemy.primary.Size.Y / 2
+	local pos = enemy.primary.Position - Vector3.new(0, half, 0) -- ground position
+	local idx = enemy.waypointIndex -- heading toward path[idx], came from path[idx-1]
+	local remaining = studs
+	while remaining > 0 do
+		local prev = path[idx - 1]
+		if not prev then
+			break -- reached the spawn end; nothing further back to bounce toward
+		end
+		local toPrev = prev - pos
+		local back = toPrev.Magnitude
+		if remaining < back then
+			pos = pos + toPrev.Unit * remaining -- land partway down this segment
+			remaining = 0
+		else
+			pos = prev -- snap to the earlier waypoint and keep bouncing back
+			remaining -= back
+			idx -= 1
+		end
+	end
+	enemy.waypointIndex = math.max(2, idx) -- can't head toward anything before path[2]
+	enemy.distance = math.max(0, enemy.distance - (studs - remaining)) -- keep targeting honest
+	enemy.primary.Position = pos + Vector3.new(0, half, 0) -- .Position keeps its facing
+end
+
 -- Move every active enemy one frame along the path.
 function EnemyService.step(dt: number)
 	local path = Map.getPath()
