@@ -3,12 +3,14 @@
 -- economy + base, and starts the waves. (TowerService/PlacementService land here
 -- in the next milestone.)
 
+local DevTestMap = require(script.DevTestMap)
 local Map = require(script.Map)
 local GameState = require(script.GameState)
 local Economy = require(script.EconomyService)
 local EnemyService = require(script.EnemyService)
 local WaveManager = require(script.WaveManager)
 
+DevTestMap.ensure() -- dev-only: builds a graybox map if none exists (Studio)
 Map.init()
 Economy.init()
 GameState.init()

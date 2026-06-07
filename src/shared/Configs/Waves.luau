@@ -43,15 +43,12 @@ local function generate(waveNumber: number): Wave
 		{ enemyType = "Grunt", count = count, spacing = 0.45, healthMult = healthMult },
 	}
 	if waveNumber % 3 == 0 then
-		table.insert(
-			wave,
-			{
-				enemyType = "Brute",
-				count = 1 + math.floor(over / 3),
-				spacing = 1.2,
-				healthMult = healthMult,
-			}
-		)
+		table.insert(wave, {
+			enemyType = "Brute",
+			count = 1 + math.floor(over / 3),
+			spacing = 1.2,
+			healthMult = healthMult,
+		})
 	end
 	if waveNumber % 2 == 0 then
 		table.insert(
