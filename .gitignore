@@ -11,6 +11,7 @@ sourcemap.json
 /DevPackages
 wally.lock
 
-# OS / editor
+# OS / editor — keep the shared project settings, ignore the rest
 .DS_Store
-.vscode/
+.vscode/*
+!.vscode/settings.json

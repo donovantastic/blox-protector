@@ -1,0 +1,5 @@
+std = "roblox"
+
+[rules]
+# Rojo init.server / init.client files are entrypoints, not modules.
+incorrect_standard_library_use = "warn"

@@ -174,7 +174,8 @@ function EnemyService.step(dt: number)
 
 		local newPos = newGround + Vector3.new(0, enemy.primary.Size.Y / 2, 0)
 		if distLeft > 0.05 then
-			enemy.primary.CFrame = CFrame.lookAt(newPos, target + Vector3.new(0, enemy.primary.Size.Y / 2, 0))
+			enemy.primary.CFrame =
+				CFrame.lookAt(newPos, target + Vector3.new(0, enemy.primary.Size.Y / 2, 0))
 		else
 			enemy.primary.Position = newPos
 		end

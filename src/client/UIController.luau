@@ -56,7 +56,7 @@ function UIController.init()
 	top.Parent = gui
 	local row = Instance.new("Frame")
 	row.AnchorPoint = Vector2.new(0.5, 0.5)
-	row.Position = UDim2.new(0.5, 0, 0.5, 0)
+	row.Position = UDim2.fromScale(0.5, 0.5)
 	row.Size = UDim2.fromOffset(600, 48)
 	row.BackgroundTransparency = 1
 	row.Parent = top
@@ -72,7 +72,7 @@ function UIController.init()
 
 	local status = Instance.new("TextLabel")
 	status.AnchorPoint = Vector2.new(0.5, 0.5)
-	status.Position = UDim2.new(0.5, 0, 0.42, 0)
+	status.Position = UDim2.fromScale(0.5, 0.42)
 	status.Size = UDim2.fromOffset(520, 90)
 	status.BackgroundTransparency = 1
 	status.Font = Enum.Font.GothamBlack
