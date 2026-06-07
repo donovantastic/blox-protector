@@ -153,6 +153,24 @@ local function act2SpawnCFrame(): CFrame
 	return CFrame.new(250, 6, 0)
 end
 
+-- secret card pickups: touch the part -> grant the card + remove it
+local function wireSecretCards(container: Instance)
+	for _, part in container:GetDescendants() do
+		local cardId = part:GetAttribute("SecretCard")
+		if part:IsA("BasePart") and typeof(cardId) == "string" then
+			local taken = false
+			part.Touched:Connect(function(hit)
+				if not taken and Players:GetPlayerFromCharacter(hit.Parent) then
+					taken = true
+					CardService.grant(cardId)
+					notify:FireAllClients("★ Secret card found — it's in your hand!")
+					part:Destroy()
+				end
+			end)
+		end
+	end
+end
+
 ModeService.onChange = function(mode)
 	if mode == "Gauntlet" then
 		-- fresh gauntlet on this act's own map
@@ -174,17 +192,17 @@ WaveManager.onComplete = function(won)
 		act = 2
 		ExploreStage2.ensure()
 		local stage2 = Workspace:FindFirstChild("ExploreStage2")
-		local gate2 = stage2 and stage2:FindFirstChild("Gate")
-		if gate2 and gate2:IsA("BasePart") then
-			gate2:SetAttribute("Unlocked", false) -- sealed until you buy the Sword
-			gate2.Color = Color3.fromRGB(228, 64, 64)
-			gate2.Material = Enum.Material.Neon
-			act2Gate = gate2
-			wireGate(gate2, "Sealed. Buy the Sword from the Merchant to power it on.")
+		if stage2 then
+			local gate2 = stage2:FindFirstChild("Gate") -- built sealed (red) by ExploreStage2
+			if gate2 and gate2:IsA("BasePart") then
+				act2Gate = gate2
+				wireGate(gate2, "Sealed. Buy the Sword from the Merchant to power it on.")
+			end
+			wireSecretCards(stage2)
 		end
 		teleportAll(act2SpawnCFrame())
-		notify:FireAllClients("Sector cleared! A new area opens up — go explore it.")
-		ModeService.set("Explore", "freewalk")
+		notify:FireAllClients("Sector cleared! A new area opens — walk the lane, and look up...")
+		ModeService.set("Explore", "sidescroll")
 	else
 		ModeService.set("ChapterComplete")
 	end

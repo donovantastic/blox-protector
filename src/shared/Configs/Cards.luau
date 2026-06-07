@@ -37,6 +37,14 @@ local Cards: { [string]: Card } = {
 		effect = "heal",
 		power = 30, -- base HP restored
 	},
+	kill9 = {
+		id = "kill9",
+		name = "Kill -9",
+		desc = "Force-quit the toughest process. No prompts, no mercy. (Hidden — you found it!)",
+		rarity = "Secret",
+		effect = "damage",
+		power = 420,
+	},
 }
 
 return Cards
