@@ -13,6 +13,14 @@ export type Enemy = {
 	leakDamage: number, -- base HP lost if it reaches the Database Core
 	scale: number?, -- graybox size multiplier (default 1); bosses are big
 	boss: boolean?, -- true for the chapter boss
+	-- optional: a "drill" ability that disables towers. While walking, the enemy
+	-- drills the nearest tower within `range` and stuns it (can't fire) for `stun`
+	-- seconds, then waits `cooldown` seconds before it can drill again.
+	ability: {
+		range: number, -- studs it can reach a tower from
+		stun: number, -- seconds the tower is disabled
+		cooldown: number, -- seconds between drills
+	}?,
 }
 
 local Enemies: { [string]: Enemy } = {
@@ -56,6 +64,8 @@ local Enemies: { [string]: Enemy } = {
 		leakDamage = 10, -- a big bite if it reaches the Core, but not instant-death
 		scale = 2.6, -- scaled up — a proper big elite
 		boss = true, -- gets the boss healthbar + "Boss" tag (your Drill targets it first)
+		-- its signature move: drill a nearby tower and knock it offline for a bit
+		ability = { range = 16, stun = 2.5, cooldown = 4 },
 	},
 
 	Boss = {

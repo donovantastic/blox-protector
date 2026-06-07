@@ -28,6 +28,7 @@ export type Enemy = {
 	slowMult: number, -- current speed multiplier from paint (1 = normal speed)
 	slowUntil: number, -- os.clock() time the paint wears off (0 = not painted)
 	baseColor: Color3, -- the enemy's normal color, so we can restore it after the paint fades
+	abilityCooldown: number, -- seconds left before this enemy can use its drill ability again
 }
 
 local EnemyService = {}
@@ -364,6 +365,8 @@ function EnemyService.spawn(enemyType: string, healthMult: number): Enemy?
 		slowMult = 1, -- not painted yet → full speed
 		slowUntil = 0,
 		baseColor = primary.Color,
+		-- wait one full cooldown before the first drill (a brief grace period)
+		abilityCooldown = if def.ability then def.ability.cooldown else 0,
 	}
 	enemy.bar = buildHealthBar(primary)
 	table.insert(active, enemy)

@@ -28,6 +28,8 @@ type Tower = {
 	model: Model,
 	turret: BasePart,
 	cooldown: number,
+	stunnedUntil: number, -- os.clock() time a Pushpin's drill wears off (0 = not stunned)
+	stunFx: Highlight?, -- the glow shown while stunned
 }
 
 local TowerService = {}
@@ -355,9 +357,66 @@ local function fireWall(tower: Tower, enemies: { EnemyService.Enemy })
 	tower.cooldown = 1 / tower.def.fireRate
 end
 
+local function nearestTowerInRange(position: Vector3, range: number): Tower?
+	local best: Tower? = nil
+	local bestD = range
+	for _, tower in towers do
+		local d = (tower.position - position).Magnitude
+		if d <= bestD then
+			bestD = d
+			best = tower
+		end
+	end
+	return best
+end
+
+-- Knock a tower offline for `duration` seconds and give it a yellow "stunned" glow.
+local function stunTower(tower: Tower, duration: number)
+	tower.stunnedUntil = os.clock() + duration
+	if not tower.stunFx then
+		local hl = Instance.new("Highlight")
+		hl.FillColor = Color3.fromRGB(255, 210, 70)
+		hl.FillTransparency = 0.5
+		hl.OutlineColor = Color3.fromRGB(255, 170, 40)
+		hl.Parent = tower.model
+		tower.stunFx = hl
+	end
+end
+
+-- Enemies with a drill ability (the Pushpin) disable nearby towers as they pass.
+local function runEnemyAbilities(dt: number, enemies: { EnemyService.Enemy })
+	for _, enemy in enemies do
+		local ability = enemy.def.ability
+		if not ability or enemy.dead then
+			continue
+		end
+		enemy.abilityCooldown -= dt
+		if enemy.abilityCooldown > 0 then
+			continue
+		end
+		local target = nearestTowerInRange(enemy.primary.Position, ability.range)
+		if target then
+			stunTower(target, ability.stun)
+			tracer(enemy.primary.Position, target.turret.Position, Color3.fromRGB(255, 140, 40))
+			enemy.abilityCooldown = ability.cooldown
+		else
+			-- nothing in reach yet — re-check soon instead of burning the full cooldown
+			enemy.abilityCooldown = 0.4
+		end
+	end
+end
+
 function TowerService.step(dt: number)
 	local enemies = EnemyService.getActive()
+	runEnemyAbilities(dt, enemies)
 	for _, tower in towers do
+		-- drilled by a Pushpin? sit out until the stun wears off, then drop the glow.
+		if os.clock() < tower.stunnedUntil then
+			continue
+		elseif tower.stunFx then
+			tower.stunFx:Destroy()
+			tower.stunFx = nil
+		end
 		if tower.cooldown > 0 then
 			tower.cooldown = math.max(0, tower.cooldown - dt) -- reload even while idle
 		end
@@ -438,6 +497,7 @@ function TowerService.place(
 		model = model,
 		turret = turret,
 		cooldown = 0,
+		stunnedUntil = 0,
 	}
 	towers[tower.id] = tower
 	applyAttributes(tower)
