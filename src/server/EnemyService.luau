@@ -173,11 +173,12 @@ function EnemyService.step(dt: number)
 		end
 
 		local newPos = newGround + Vector3.new(0, enemy.primary.Size.Y / 2, 0)
-		if distLeft > 0.05 then
-			enemy.primary.CFrame =
-				CFrame.lookAt(newPos, target + Vector3.new(0, enemy.primary.Size.Y / 2, 0))
+		if distLeft > 0.001 then
+			-- face along the direction of travel — always a valid lookAt (avoids the
+			-- "position == lookAt" error when we land exactly on a waypoint).
+			enemy.primary.CFrame = CFrame.lookAt(newPos, newPos + toTarget.Unit)
 		else
-			enemy.primary.Position = newPos
+			enemy.primary.CFrame = CFrame.new(newPos)
 		end
 	end
 end
