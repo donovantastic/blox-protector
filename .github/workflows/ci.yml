@@ -1,0 +1,31 @@
+# Runs on every push + pull request. Checks formatting (StyLua) and lints (Selene)
+# using the exact tool versions pinned in rokit.toml — the same checks everyone runs
+# locally. A red X here = something to fix before it can merge to main.
+#
+# If the setup-rokit step ever fails, bump it to the latest release:
+#   https://github.com/CompeyDev/setup-rokit/releases
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint (StyLua + Selene)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Install tools (Rokit)
+        uses: CompeyDev/setup-rokit@v0.1.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Format check (StyLua)
+        run: stylua --check src
+
+      - name: Lint (Selene)
+        run: selene src
