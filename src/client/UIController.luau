@@ -96,6 +96,9 @@ function UIController.init()
 			elseif currentStatus == "won" then
 				SoundController.play("victory")
 			end
+			if currentStatus ~= "playing" then
+				ClientState.setSelected(nil) -- round over: drop any armed tower so the ghost clears
+			end
 			lastStatus = currentStatus
 		end
 		if state.status == "lost" then

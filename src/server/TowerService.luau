@@ -15,6 +15,7 @@ local Balance = require(Shared.Configs.Balance)
 local PlacementService = require(script.Parent.PlacementService)
 local Economy = require(script.Parent.EconomyService)
 local EnemyService = require(script.Parent.EnemyService)
+local GameState = require(script.Parent.GameState)
 
 type Tower = {
 	id: number,
@@ -331,6 +332,11 @@ function TowerService.place(
 	towerType: string,
 	position: Vector3
 ): (boolean, string)
+	-- no building once the round is decided (won or lost) — the server is the
+	-- authority, so this is what truly stops it even if a client tries anyway
+	if GameState.getStatus() ~= "playing" then
+		return false, "Round's over — can't place towers"
+	end
 	local def = Towers[towerType]
 	if not def then
 		return false, "Unknown tower"
