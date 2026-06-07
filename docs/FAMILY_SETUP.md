@@ -34,25 +34,22 @@ Do this once on each computer. (Windows for the kids, Mac for Christian — both
 - **Roblox Studio** — https://create.roblox.com  → and inside Studio, install the **Rojo** plugin
   (Toolbox → search "Rojo", or run `rojo plugin install` in a terminal).
 
-### 2. Get the code
+### 2. Get the code + run setup
 ```
-git clone <THE FAMILY REPO URL>
-cd tower-defense
-rokit install        # pulls Rojo, Selene, StyLua, luau-lsp at the pinned versions
+git clone https://github.com/donovantastic/blox-protector
+cd blox-protector
+./scripts/setup.sh        # installs the game tools + VS Code extensions
 ```
+*(Windows: run that line inside WSL or Git Bash — both come with `bash`.)*
+
+The script installs Rojo / Selene / StyLua / luau-lsp (via Rokit) and the VS Code extensions,
+then prints the last manual steps. Safe to re-run any time.
 
 ### 3. Stamp your name on your commits (so we know who did what)
 ```
 git config --global user.name  "Milo"        # or "Xander" / "Christian"
 git config --global user.email "donovangames@example.com"   # any shared email
 ```
-
-### 4. VS Code extensions (open the folder in VS Code, install these from the Extensions panel)
-- **Luau Language Server** (JohnnyMorganz)
-- **Selene** (Kampfkarren)
-- **StyLua** (JohnnyMorganz)
-
-The repo already carries the settings that wire these up — no config needed.
 
 ---
 
