@@ -9,17 +9,37 @@ the map and art live in Studio.
 
 ---
 
-## Run it (first time)
+## Setup — three machines
 
-1. Install Rojo (VS Code extension + the Studio plugin) on the machine with Studio.
-2. `git clone` this repo, open it in VS Code.
-3. Terminal: `rojo serve` → in Studio, open the **Rojo** plugin → **Connect**.
-   The `src/` tree syncs into the place.
-4. Build the **map** in Studio (see the contract below), then press **Play**.
-   Enemies spawn and walk the path; leaks drop Base HP; the HUD shows Cash / Wave / Base.
+| Machine | Role |
+|---|---|
+| **MacBook Pro** | code (edit here; Claude works here). Runs the Rojo dev server. |
+| **Mac mini** | Roblox Studio — runs the game, imports Xander's art. |
+| **Windows** | Xander's Blender (modeling/animation) — stays free. |
 
-> Graybox-first: if you haven't made enemy/tower models yet, the code spawns colored
-> placeholder parts so the loop works *before* any art exists.
+Rojo streams code **MBP → Mini over the LAN** — edit a file, it live-syncs into Studio.
+No git round-trip per change.
+
+**MBP (code):** Rojo is installed via [Rokit](https://github.com/rojo-rbx/rokit), pinned in
+`rokit.toml`. On a fresh clone, run `rokit install` to get the same version. Then:
+```
+./serve.sh      # serves on 0.0.0.0:34872 and prints the connect address
+```
+Edit `src/` in VS Code — changes live-sync to the Mini.
+
+**Mac mini (Studio, one-time):** install the **Rojo Studio plugin** (Creator Store → "Rojo").
+Open your place → **Rojo** plugin → host **`Christian-MBP.local`** (or `192.168.1.105`),
+port `34872` → **Connect**. Build the map (contract below), press **Play**. Import Xander's
+models here under `ReplicatedStorage.Assets.{Towers,Enemies}`, named to match the configs.
+
+**Windows (Xander):** Blender → export **FBX** (or `.obj` for static) → hand to the Mini →
+import into Studio.
+
+> **Connect address:** `Christian-MBP.local:34872` (survives Wi-Fi reconnects) or
+> `192.168.1.105:34872`. Keep `./serve.sh` running on the MBP while you work.
+>
+> **Graybox-first:** until there's art, the code spawns colored placeholder parts, so the
+> loop runs *today*.
 
 ---
 
