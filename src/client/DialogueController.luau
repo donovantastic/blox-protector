@@ -20,6 +20,7 @@ local typing = false
 local currentText = ""
 local revealRequested = false
 local advanceRequested = false
+local skipRequested = false -- skip the whole sequence (still fires onDone/DialogueDone)
 local sequenceToken = 0
 
 local gui: ScreenGui
@@ -73,7 +74,7 @@ local function showLine(line: Line, token: number)
 
 	local chars = splitGraphemes(line.text)
 	for i = 1, #chars do
-		if token ~= sequenceToken or revealRequested then
+		if token ~= sequenceToken or revealRequested or skipRequested then
 			break
 		end
 		textLabel.Text = table.concat(chars, "", 1, i)
@@ -110,6 +111,7 @@ local function playSequence(sequenceKey: string, fireDone: boolean, onDone: (() 
 	end
 
 	playing = true
+	skipRequested = false
 	sequenceToken += 1
 	local token = sequenceToken
 	gui.Enabled = true
@@ -117,11 +119,11 @@ local function playSequence(sequenceKey: string, fireDone: boolean, onDone: (() 
 	box.Visible = true
 
 	for _, line in sequence do
-		if token ~= sequenceToken then
+		if token ~= sequenceToken or skipRequested then
 			break
 		end
 		showLine(line, token)
-		while token == sequenceToken and playing and not advanceRequested do
+		while token == sequenceToken and playing and not advanceRequested and not skipRequested do
 			task.wait()
 		end
 		advanceRequested = false
@@ -251,6 +253,29 @@ function DialogueController.init()
 	textLabel.TextWrapped = true
 	textLabel.ZIndex = 3
 	textLabel.Parent = box
+
+	local skipBtn = Instance.new("TextButton")
+	skipBtn.Name = "Skip"
+	skipBtn.AnchorPoint = Vector2.new(1, 0)
+	skipBtn.Position = UDim2.new(1, -12, 0, -28)
+	skipBtn.Size = UDim2.fromOffset(92, 26)
+	skipBtn.BackgroundColor3 = Color3.fromRGB(38, 40, 50)
+	skipBtn.Font = Enum.Font.GothamBold
+	skipBtn.TextSize = 14
+	skipBtn.TextColor3 = Color3.fromRGB(220, 222, 230)
+	skipBtn.Text = "Skip  ⏭"
+	skipBtn.ZIndex = 5
+	addCorner(skipBtn, 6)
+	local skipStroke = Instance.new("UIStroke")
+	skipStroke.Thickness = 3
+	skipStroke.Color = Color3.fromRGB(28, 28, 34)
+	skipStroke.Parent = skipBtn
+	skipBtn.Parent = box
+	skipBtn.Activated:Connect(function()
+		if playing then
+			skipRequested = true
+		end
+	end)
 
 	blocker.Activated:Connect(requestAdvance)
 	UserInputService.InputBegan:Connect(function(input, processed)

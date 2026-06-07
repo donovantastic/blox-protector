@@ -177,27 +177,37 @@ function TowerPanel.init()
 	ring.Shape = Enum.PartType.Cylinder
 	ring.Parent = Workspace
 
-	upgradeBtn.Activated:Connect(function()
+	local function doUpgrade()
 		if selected then
 			upgradeRemote:FireServer(selected:GetAttribute("TowerId"))
 		end
-	end)
-	sellBtn.Activated:Connect(function()
+	end
+	local function doSell()
 		if selected then
 			sellRemote:FireServer(selected:GetAttribute("TowerId"))
 			selectTower(nil)
 		end
-	end)
+	end
+	upgradeBtn.Activated:Connect(doUpgrade)
+	sellBtn.Activated:Connect(doSell)
 
-	-- click to select a placed tower (only when not arming a hotbar tower)
+	-- click to select a placed tower; with one selected, E upgrades / X sells
 	UserInputService.InputBegan:Connect(function(input, processed)
-		if processed or input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+		if processed then
 			return
 		end
-		if ClientState.selectedTower then
-			return -- placement mode owns the click
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			if ClientState.selectedTower then
+				return -- placement mode owns the click
+			end
+			selectTower(towerUnderMouse())
+		elseif selected then
+			if input.KeyCode == Enum.KeyCode.E then
+				doUpgrade()
+			elseif input.KeyCode == Enum.KeyCode.X then
+				doSell()
+			end
 		end
-		selectTower(towerUnderMouse())
 	end)
 
 	ClientState.onChange(refresh)
