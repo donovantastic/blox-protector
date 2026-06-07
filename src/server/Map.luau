@@ -6,39 +6,28 @@
 --     ├─ Spawn   (Part)         enemies appear here
 --     ├─ Base    (Part)         enemies leak here = you lose HP (the thing you defend)
 --     └─ Path    (Folder)       waypoint Parts named "1","2","3",... in walk order
---   + any number of Parts tagged "BuildZone" (CollectionService) — towers may only
---     be placed INSIDE one of these (and off the path). Tag via the Tag Editor.
 --
--- Enemies walk: Spawn -> 1 -> 2 -> ... -> Base.
+-- Enemies walk: Spawn -> 1 -> 2 -> ... -> Base. Towers may be placed anywhere off
+-- the path (Map.distanceToPath gates that).
 
 local Workspace = game:GetService("Workspace")
 local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local PathUtil = require(ReplicatedStorage:WaitForChild("Shared").PathUtil)
 
 local Map = {}
 
 local waypoints: { Vector3 } = {}
 local buildZones: { BasePart } = {}
 
-local function numericSort(a: Instance, b: Instance): boolean
-	return (tonumber(a.Name) or math.huge) < (tonumber(b.Name) or math.huge)
-end
-
 function Map.init()
 	local map = Workspace:WaitForChild("Map")
-	local spawn = map:WaitForChild("Spawn") :: BasePart
-	local base = map:WaitForChild("Base") :: BasePart
-	local path = map:WaitForChild("Path")
+	map:WaitForChild("Spawn")
+	map:WaitForChild("Base")
+	map:WaitForChild("Path")
 
-	local ordered = path:GetChildren()
-	table.sort(ordered, numericSort)
-
-	waypoints = { spawn.Position }
-	for _, wp in ordered do
-		if wp:IsA("BasePart") then
-			table.insert(waypoints, wp.Position)
-		end
-	end
-	table.insert(waypoints, base.Position)
+	waypoints = PathUtil.getWaypoints(map)
 
 	buildZones = {}
 	for _, part in CollectionService:GetTagged("BuildZone") do
@@ -62,16 +51,9 @@ function Map.getBuildZones(): { BasePart }
 	return buildZones
 end
 
--- True if `position` is inside any BuildZone's XZ footprint (used by placement, Phase 2).
-function Map.isInBuildZone(position: Vector3): boolean
-	for _, zone in buildZones do
-		local local_ = zone.CFrame:PointToObjectSpace(position)
-		local half = zone.Size / 2
-		if math.abs(local_.X) <= half.X and math.abs(local_.Z) <= half.Z then
-			return true
-		end
-	end
-	return false
+-- Shortest XZ distance from `position` to the path.
+function Map.distanceToPath(position: Vector3): number
+	return PathUtil.distanceToPath(waypoints, position)
 end
 
 return Map

@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared").Remotes)
+local ClientState = require(script.Parent.ClientState)
 
 local UIController = {}
 
@@ -82,6 +83,7 @@ function UIController.init()
 	status.Parent = gui
 
 	Remotes.event("StateChanged").OnClientEvent:Connect(function(state)
+		ClientState.setCash(state.cash)
 		cash.Text = "$ " .. state.cash
 		wave.Text = "Wave " .. state.wave
 		hp.Text = "Base " .. state.baseHP .. " / " .. state.maxBaseHP
@@ -96,6 +98,36 @@ function UIController.init()
 		else
 			status.Visible = false
 		end
+	end)
+
+	-- transient toast for server rejections (e.g. "Too close to the path")
+	local toast = Instance.new("TextLabel")
+	toast.AnchorPoint = Vector2.new(0.5, 1)
+	toast.Position = UDim2.new(0.5, 0, 1, -124)
+	toast.Size = UDim2.fromOffset(360, 36)
+	toast.BackgroundColor3 = Color3.fromRGB(44, 26, 26)
+	toast.BackgroundTransparency = 1
+	toast.TextColor3 = Color3.fromRGB(240, 150, 150)
+	toast.Font = Enum.Font.GothamBold
+	toast.TextSize = 16
+	toast.Visible = false
+	local tcorner = Instance.new("UICorner")
+	tcorner.CornerRadius = UDim.new(0, 8)
+	tcorner.Parent = toast
+	toast.Parent = gui
+
+	local toastToken = 0
+	Remotes.event("Notify").OnClientEvent:Connect(function(message)
+		toast.Text = tostring(message)
+		toast.Visible = true
+		toast.BackgroundTransparency = 0.15
+		toastToken += 1
+		local myToken = toastToken
+		task.delay(1.6, function()
+			if myToken == toastToken then
+				toast.Visible = false
+			end
+		end)
 	end)
 end
 

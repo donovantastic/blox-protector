@@ -1,9 +1,12 @@
 --!strict
--- Client entrypoint. (PlacementController for tower ghost-preview + click-to-place
--- lands here next milestone.)
+-- Client entrypoint: HUD, hotbar, and ghost-preview tower placement.
 
 local UIController = require(script.UIController)
+local Hotbar = require(script.Hotbar)
+local PlacementController = require(script.PlacementController)
 
 UIController.init()
+Hotbar.init()
+PlacementController.init()
 
-print("[Client] HUD ready")
+print("[Client] HUD + hotbar + placement ready")
