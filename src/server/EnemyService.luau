@@ -55,6 +55,18 @@ export type Ally = {
 	drillDamage: number, -- drill pin: damage per tick as it bores THROUGH enemies (0 = not a drill)
 	drillCooldown: number, -- drill pin: seconds until its next drill tick
 	medic: boolean, -- medic pin: clears the stun off towers it passes (and doesn't ram)
+	trail: boolean, -- trail pin: lays a glowing trail that boosts pins + burns enemies
+	trailCooldown: number, -- trail pin: seconds until it drops the next trail blob
+}
+
+-- A glowing blob a trail pin leaves behind: it speeds up friendly pins that pass
+-- through it and burns enemies standing in it, until it fades.
+type Trail = {
+	position: Vector3,
+	expireAt: number, -- os.clock() time it disappears
+	damage: number, -- damage per tick to enemies inside
+	radius: number,
+	damageCooldown: number,
 }
 
 local EnemyService = {}
@@ -65,6 +77,7 @@ EnemyService.onDeath = function(_enemy: Enemy) end :: (Enemy) -> ()
 
 local active: { Enemy } = {}
 local allies: { Ally } = {}
+local trails: { Trail } = {}
 local nextId = 0
 local container: Folder
 local frozenUntil = 0 -- Defrag card: all enemies stop moving until this clock time
@@ -74,6 +87,9 @@ local frozenUntil = 0 -- Defrag card: all enemies stop moving until this clock t
 local ALLY_SPEED = 16
 local ALLY_RAM_RADIUS = 5
 local LIMB_COLOR = Color3.fromRGB(245, 245, 250) -- the white limbs the classic pin throws
+local TRAIL_COLOR = Color3.fromRGB(120, 230, 255) -- the trail pin's glowing path
+local TRAIL_RADIUS = 6
+local TRAIL_BOOST = 1.6 -- how much faster pins move inside a trail
 
 -- The pink an enemy turns while it's covered in paint (mixed with its own color so
 -- you can still tell enemies apart). Purely visual — it's how you SEE the slow working.
@@ -689,6 +705,7 @@ function EnemyService.reset()
 		ally.model:Destroy()
 	end
 	table.clear(allies)
+	table.clear(trails) -- the trail blobs themselves fade on their own (Debris)
 	frozenUntil = 0
 end
 
@@ -775,8 +792,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	--   [0.13,0.17) -> trojan    (4%)  bursts into a swarm of mini pins on impact
 	--   [0.17,0.21) -> floater   (4%)  hovers above the track, explodes on contact
 	--   [0.21,0.26) -> medic     (5%)  medkit pin: un-stuns towers it passes (no ram)
-	--   [0.26,0.36) -> rocket    (10%, max only)  high damage + speed, explodes
-	--   [0.36,0.61) -> shooter   (25%, max only)  carries a gun and fires as it advances
+	--   [0.26,0.30) -> trail     (4%)  lays a glowing trail: speeds up pins + burns enemies
+	--   [0.30,0.40) -> rocket    (10%, max only)  high damage + speed, explodes
+	--   [0.40,0.65) -> shooter   (25%, max only)  carries a gun and fires as it advances
 	local roll = math.random()
 	local mega = roll < 0.01
 	local slingshot = not mega and roll < 0.06
@@ -796,6 +814,14 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not trojan
 		and not floater
 		and roll < 0.26
+	local trail = not mega
+		and not slingshot
+		and not storm
+		and not classic
+		and not trojan
+		and not floater
+		and not medic
+		and roll < 0.30
 	local rocket = maxLevel
 		and not mega
 		and not slingshot
@@ -804,7 +830,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not trojan
 		and not floater
 		and not medic
-		and roll < 0.36
+		and not trail
+		and roll < 0.40
 	local shooter = maxLevel
 		and not mega
 		and not slingshot
@@ -813,8 +840,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not trojan
 		and not floater
 		and not medic
+		and not trail
 		and not rocket
-		and roll < 0.61
+		and roll < 0.65
 
 	-- defaults: a plain random-color pin heading straight for the enemy spawn
 	local scale = 0.9
@@ -864,6 +892,10 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	elseif medic then
 		color = Color3.fromRGB(245, 245, 250) -- white, like an ambulance
 		attach = "medic" -- carries a medkit; un-stuns towers as it rolls by
+	elseif trail then
+		scale = 0.7
+		color = TRAIL_COLOR -- glowing cyan comet
+		speed = ALLY_SPEED * 1.4 -- zippy, so it lays a long trail
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
 		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
@@ -904,6 +936,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		drillDamage = 0,
 		drillCooldown = 0,
 		medic = medic,
+		trail = trail,
+		trailCooldown = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -951,6 +985,8 @@ function EnemyService.spawnDrillPin(damage: number, position: Vector3)
 		drillDamage = damage, -- bores through everything it touches
 		drillCooldown = 0,
 		medic = false,
+		trail = false,
+		trailCooldown = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -1069,10 +1105,75 @@ local function spawnMiniPin(damage: number, position: Vector3)
 		drillDamage = 0,
 		drillCooldown = 0,
 		medic = false,
+		trail = false,
+		trailCooldown = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
 	table.insert(allies, ally)
+end
+
+-- Drop a glowing trail blob at `position` that fades out over its lifetime.
+local function dropTrail(position: Vector3, damage: number)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CastShadow = false
+	p.Material = Enum.Material.Neon
+	p.Color = TRAIL_COLOR
+	p.Shape = Enum.PartType.Ball
+	p.Size = Vector3.new(TRAIL_RADIUS * 1.6, TRAIL_RADIUS * 1.6, TRAIL_RADIUS * 1.6)
+	p.Transparency = 0.4
+	p.Position = position + Vector3.new(0, 0.5, 0)
+	p.Parent = Workspace
+	TweenService:Create(
+		p,
+		TweenInfo.new(2.5, Enum.EasingStyle.Linear),
+		{ Transparency = 1, Size = Vector3.new(1, 1, 1) }
+	):Play()
+	Debris:AddItem(p, 2.5)
+	table.insert(trails, {
+		position = position,
+		expireAt = os.clock() + 2.5,
+		damage = damage,
+		radius = TRAIL_RADIUS,
+		damageCooldown = 0,
+	})
+end
+
+-- Trails fade out, and while they last they burn enemies standing inside them.
+local function stepTrails(dt: number)
+	local now = os.clock()
+	for i = #trails, 1, -1 do
+		local t = trails[i]
+		if now >= t.expireAt then
+			table.remove(trails, i)
+			continue
+		end
+		t.damageCooldown -= dt
+		if t.damageCooldown <= 0 then
+			for _, enemy in active do
+				if
+					not enemy.dead
+					and (enemy.primary.Position - t.position).Magnitude <= t.radius
+				then
+					EnemyService.takeDamage(enemy, t.damage)
+				end
+			end
+			t.damageCooldown = 0.3
+		end
+	end
+end
+
+-- Is `position` inside any active trail blob? (trail pins speed up here)
+local function inTrail(position: Vector3): boolean
+	for _, t in trails do
+		if (position - t.position).Magnitude <= t.radius then
+			return true
+		end
+	end
+	return false
 end
 
 -- Move the friendly pins up the track; ram (and spend themselves on) the first
@@ -1084,6 +1185,15 @@ local function stepAllies(dt: number)
 		if ally.dead then
 			table.remove(allies, i)
 			continue
+		end
+
+		-- trail pins drop a glowing blob behind them every so often
+		if ally.trail then
+			ally.trailCooldown -= dt
+			if ally.trailCooldown <= 0 then
+				dropTrail(ally.primary.Position, ally.damage)
+				ally.trailCooldown = 0.18
+			end
 		end
 
 		-- shooter pins fire at the nearest enemy in range as they advance
@@ -1142,7 +1252,7 @@ local function stepAllies(dt: number)
 		-- did we bump an enemy? (slingshot pins don't attack while winding; drill pins
 		-- pierce instead of ramming; medics are non-combat support — all skip this)
 		local rammed = false
-		if not ally.windup and ally.drillDamage <= 0 and not ally.medic then
+		if not ally.windup and ally.drillDamage <= 0 and not ally.medic and not ally.trail then
 			for _, enemy in active do
 				local d = (enemy.primary.Position - ally.primary.Position).Magnitude
 				if not enemy.dead and d <= ally.ramRadius then
@@ -1230,7 +1340,9 @@ local function stepAllies(dt: number)
 		local pos = ally.primary.Position - Vector3.new(0, ally.primary.Size.Y / 2, 0)
 		local toTarget = target - pos
 		local distLeft = toTarget.Magnitude
-		local stepDist = ally.speed * dt
+		-- pins move faster while inside a glowing trail
+		local boost = if inTrail(ally.primary.Position) then TRAIL_BOOST else 1
+		local stepDist = ally.speed * boost * dt
 		local newGround: Vector3
 		if stepDist >= distLeft then
 			newGround = target
@@ -1309,6 +1421,7 @@ function EnemyService.step(dt: number)
 		end
 	end
 	stepAllies(dt) -- friendly pins march the other way
+	stepTrails(dt) -- fade trail blobs + burn enemies in them
 end
 
 -- For TowerService targeting.
