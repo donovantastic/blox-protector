@@ -409,9 +409,30 @@ local function runEnemyAbilities(dt: number, enemies: { EnemyService.Enemy })
 	end
 end
 
+-- Medic pins (from the Pin Factory) clear the stun off any tower they roll past.
+local function runMedics()
+	local now = os.clock()
+	for _, ally in EnemyService.getAllies() do
+		if ally.medic and not ally.dead then
+			for _, tower in towers do
+				local near = (tower.position - ally.primary.Position).Magnitude <= 22
+				if now < tower.stunnedUntil and near then
+					tower.stunnedUntil = 0 -- cured! (the glow clears next frame)
+					tracer(
+						ally.primary.Position,
+						tower.turret.Position,
+						Color3.fromRGB(90, 230, 120)
+					)
+				end
+			end
+		end
+	end
+end
+
 function TowerService.step(dt: number)
 	local enemies = EnemyService.getActive()
 	runEnemyAbilities(dt, enemies)
+	runMedics()
 	for _, tower in towers do
 		-- drilled by a Pushpin? sit out until the stun wears off, then drop the glow.
 		if os.clock() < tower.stunnedUntil then
