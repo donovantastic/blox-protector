@@ -42,6 +42,7 @@ type Ally = {
 	dead: boolean,
 	color: Color3, -- this pin's random body color (also used for its pop)
 	ramRadius: number, -- how close an enemy must be to get rammed (bigger for the mega pin)
+	explodeRadius: number, -- mega pin: AoE blast radius on impact (0 = normal single-target pin)
 }
 
 local EnemyService = {}
@@ -521,10 +522,34 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3)
 		dead = false,
 		color = color,
 		ramRadius = if mega then ALLY_RAM_RADIUS * 2.5 else ALLY_RAM_RADIUS,
+		-- mega pin explodes in a blast 5x the normal pin's reach; normal pins don't explode
+		explodeRadius = if mega then ALLY_RAM_RADIUS * 5 else 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
 	table.insert(allies, ally)
+end
+
+-- A big expanding blast sphere, sized to the explosion radius (the mega pin's boom).
+local function bigBoom(position: Vector3, color: Color3, radius: number)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CastShadow = false
+	p.Material = Enum.Material.Neon
+	p.Color = color
+	p.Shape = Enum.PartType.Ball
+	p.Size = Vector3.new(2, 2, 2)
+	p.Position = position
+	p.Parent = Workspace
+	local full = radius * 2 -- diameter
+	TweenService:Create(
+		p,
+		TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = Vector3.new(full, full, full), Transparency = 1 }
+	):Play()
+	Debris:AddItem(p, 0.4)
 end
 
 -- Move the friendly pins up the track; ram (and spend themselves on) the first
@@ -538,17 +563,34 @@ local function stepAllies(dt: number)
 			continue
 		end
 
+		-- did we bump an enemy?
 		local rammed = false
 		for _, enemy in active do
 			local d = (enemy.primary.Position - ally.primary.Position).Magnitude
 			if not enemy.dead and d <= ally.ramRadius then
-				EnemyService.takeDamage(enemy, ally.damage)
 				rammed = true
 				break
 			end
 		end
 		if rammed then
-			deathPop(ally.primary.Position, ally.color)
+			-- normal pin hits the one it touched; the MEGA pin EXPLODES, hitting every
+			-- enemy in a blast 5x as wide
+			local blast = if ally.explodeRadius > 0 then ally.explodeRadius else ally.ramRadius
+			local single = ally.explodeRadius <= 0
+			for _, enemy in active do
+				local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+				if not enemy.dead and d <= blast then
+					EnemyService.takeDamage(enemy, ally.damage)
+					if single then
+						break
+					end
+				end
+			end
+			if ally.explodeRadius > 0 then
+				bigBoom(ally.primary.Position, ally.color, ally.explodeRadius)
+			else
+				deathPop(ally.primary.Position, ally.color)
+			end
 			ally.model:Destroy()
 			table.remove(allies, i)
 			continue
