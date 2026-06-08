@@ -41,6 +41,7 @@ type Ally = {
 	damage: number,
 	dead: boolean,
 	color: Color3, -- this pin's random body color (also used for its pop)
+	ramRadius: number, -- how close an enemy must be to get rammed (bigger for the mega pin)
 }
 
 local EnemyService = {}
@@ -492,16 +493,21 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3)
 			startIdx = i
 		end
 	end
-	local color = Color3.fromHSV(math.random(), 0.65, 1) -- a random vivid hue per pin
-	local model, primary = buildPinEnemy("AllyPin", 0.9, color)
+	-- 1% jackpot: a giant gold pin that hits for 10x. Otherwise a normal random-color pin.
+	local mega = math.random() < 0.01
+	local color = if mega
+		then Color3.fromRGB(255, 215, 0)
+		else Color3.fromHSV(math.random(), 0.65, 1)
+	local model, primary = buildPinEnemy("AllyPin", if mega then 2.6 else 0.9, color)
 	local ally: Ally = {
 		model = model,
 		primary = primary,
 		waypointIndex = startIdx - 1, -- head toward the enemy spawn
 		speed = ALLY_SPEED,
-		damage = damage,
+		damage = if mega then damage * 10 else damage,
 		dead = false,
 		color = color,
+		ramRadius = if mega then ALLY_RAM_RADIUS * 2.5 else ALLY_RAM_RADIUS,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -522,7 +528,7 @@ local function stepAllies(dt: number)
 		local rammed = false
 		for _, enemy in active do
 			local d = (enemy.primary.Position - ally.primary.Position).Magnitude
-			if not enemy.dead and d <= ALLY_RAM_RADIUS then
+			if not enemy.dead and d <= ally.ramRadius then
 				EnemyService.takeDamage(enemy, ally.damage)
 				rammed = true
 				break
