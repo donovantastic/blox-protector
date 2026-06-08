@@ -46,6 +46,7 @@ type Ally = {
 	shootRange: number, -- shooter pin: how far it can shoot enemies (0 = no gun)
 	shootDamage: number, -- shooter pin: damage per shot
 	shootCooldown: number, -- shooter pin: seconds left until it can shoot again
+	windup: boolean, -- slingshot pin: true while rolling BACKWARD before it launches forward
 }
 
 local EnemyService = {}
@@ -552,17 +553,19 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		end
 	end
 
-	-- Roll the variant from one random number. The mega jackpot can always happen;
-	-- the shooter and rocket variants only appear once the factory is maxed out.
-	--   [0, 0.01)  -> mega   (1%)
-	--   [0.01,0.11)-> rocket (10%, max only)  high damage + speed, explodes
-	--   [0.11,0.36)-> shooter(25%, max only)  carries a gun and fires as it advances
+	-- Roll the variant from one random number. Mega + slingshot can happen at any
+	-- level; shooter and rocket only appear once the factory is maxed out.
+	--   [0, 0.01)   -> mega      (1%)
+	--   [0.01,0.06) -> slingshot (5%)  winds backward, then launches forward for 2x
+	--   [0.06,0.16) -> rocket    (10%, max only)  high damage + speed, explodes
+	--   [0.16,0.41) -> shooter   (25%, max only)  carries a gun and fires as it advances
 	local roll = math.random()
 	local mega = roll < 0.01
-	local rocket = maxLevel and not mega and roll < 0.11
-	local shooter = maxLevel and not mega and not rocket and roll < 0.36
+	local slingshot = not mega and roll < 0.06
+	local rocket = maxLevel and not mega and not slingshot and roll < 0.16
+	local shooter = maxLevel and not mega and not slingshot and not rocket and roll < 0.41
 
-	-- defaults: a plain random-color pin
+	-- defaults: a plain random-color pin heading straight for the enemy spawn
 	local scale = 0.9
 	local color = Color3.fromHSV(math.random(), 0.65, 1)
 	local speed = ALLY_SPEED
@@ -572,10 +575,18 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local attach: string? = nil
 	local shootRange = 0
 	local shootDmg = 0
+	local windup = false
+	local startWaypoint = startIdx - 1 -- normal pins head toward the spawn (path[1])
 
 	if mega then
 		scale, color, dmg = 2.6, Color3.fromRGB(255, 215, 0), damage * 10
 		ramR, explodeR = ALLY_RAM_RADIUS * 2.5, ALLY_RAM_RADIUS * 5
+	elseif slingshot then
+		color = Color3.fromRGB(150, 80, 230) -- purple
+		speed, dmg = ALLY_SPEED * 2.2, damage * 2 -- fast launch, double damage
+		ramR = ALLY_RAM_RADIUS * 1.2
+		windup = true
+		startWaypoint = startIdx + 1 -- roll BACKWARD (toward the base) first
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
 		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
@@ -591,7 +602,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local ally: Ally = {
 		model = model,
 		primary = primary,
-		waypointIndex = startIdx - 1, -- head toward the enemy spawn
+		waypointIndex = startWaypoint,
 		speed = speed,
 		damage = dmg,
 		dead = false,
@@ -601,6 +612,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		shootRange = shootRange,
 		shootDamage = shootDmg,
 		shootCooldown = 0,
+		windup = windup,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -684,13 +696,15 @@ local function stepAllies(dt: number)
 			end
 		end
 
-		-- did we bump an enemy?
+		-- did we bump an enemy? (a slingshot pin doesn't attack while winding backward)
 		local rammed = false
-		for _, enemy in active do
-			local d = (enemy.primary.Position - ally.primary.Position).Magnitude
-			if not enemy.dead and d <= ally.ramRadius then
-				rammed = true
-				break
+		if not ally.windup then
+			for _, enemy in active do
+				local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+				if not enemy.dead and d <= ally.ramRadius then
+					rammed = true
+					break
+				end
 			end
 		end
 		if rammed then
@@ -719,6 +733,12 @@ local function stepAllies(dt: number)
 
 		local target = path[ally.waypointIndex]
 		if not target then
+			if ally.windup then
+				-- reached the base end → SLINGSHOT: flip around and charge forward
+				ally.windup = false
+				ally.waypointIndex = #path - 1
+				continue
+			end
 			ally.model:Destroy() -- reached the spawn without a kill — spent
 			table.remove(allies, i)
 			continue
@@ -730,7 +750,8 @@ local function stepAllies(dt: number)
 		local newGround: Vector3
 		if stepDist >= distLeft then
 			newGround = target
-			ally.waypointIndex -= 1
+			-- winding up counts UP toward the base; otherwise count down toward the spawn
+			ally.waypointIndex += if ally.windup then 1 else -1
 		else
 			newGround = pos + toTarget.Unit * stepDist
 		end
