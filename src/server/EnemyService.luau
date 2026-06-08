@@ -1111,12 +1111,8 @@ local function stepAllies(dt: number)
 		else
 			newGround = pos + toTarget.Unit * stepDist
 		end
-		-- floaters hover (and gently bob) above the track instead of rolling on it
-		local lift = ally.primary.Size.Y / 2 + ally.floatHeight
-		if ally.floatHeight > 0 then
-			lift += math.sin(os.clock() * 3) * 0.4
-		end
-		local newPos = newGround + Vector3.new(0, lift, 0)
+		-- floaters hover at a steady height above the track (no bobbing)
+		local newPos = newGround + Vector3.new(0, ally.primary.Size.Y / 2 + ally.floatHeight, 0)
 		if distLeft > 0.001 then
 			ally.model:PivotTo(CFrame.lookAt(newPos, newPos + toTarget.Unit))
 		else
