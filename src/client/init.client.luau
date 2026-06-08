@@ -12,6 +12,7 @@ local CardController = require(script.CardController)
 local HandController = require(script.HandController)
 local ConversationController = require(script.ConversationController)
 local ExploreController = require(script.ExploreController)
+local DevPanel = require(script.DevPanel)
 
 SoundController.init()
 UIController.init()
@@ -24,5 +25,8 @@ CardController.init()
 HandController.init()
 ConversationController.init()
 ExploreController.init()
+DevPanel.init()
 
-print("[Client] HUD + hotbar + placement + tower panel + story + conversation + explore ready")
+print(
+	"[Client] HUD + hotbar + placement + tower panel + story + conversation + explore + dev ready"
+)

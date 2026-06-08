@@ -762,6 +762,14 @@ function EnemyService.takeDamage(enemy: Enemy, amount: number): boolean
 	return false
 end
 
+-- Dev panel: despawn just the active enemies (leave pins/trails alone).
+function EnemyService.clearEnemies()
+	for _, enemy in active do
+		enemy.model:Destroy()
+	end
+	table.clear(active)
+end
+
 -- Wipe the board for a fresh round: destroy every enemy AND every friendly pin.
 function EnemyService.reset()
 	for _, enemy in active do
