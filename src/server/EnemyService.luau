@@ -120,7 +120,8 @@ local function buildPinEnemy(
 	modelName: string,
 	scale: number?,
 	bodyColor: Color3?,
-	attachment: string? -- nil | "gun" | "rockets" | "storm" | "drill" | "medic" | "kitty" — gear
+	attachment: string?, -- nil | "gun" | "rockets" | "storm" | "drill" | "medic" | "kitty" — gear
+	bare: boolean? -- true = skip the mech (tracks/battery/drill spike); just a clean pin + needle
 ): (Model, BasePart)
 	local RED = bodyColor or Color3.fromRGB(225, 35, 35) -- enemies red; friendly allies pass blue
 	local BLACK = Color3.fromRGB(20, 20, 22)
@@ -221,74 +222,86 @@ local function buildPinEnemy(
 		Enum.Material.SmoothPlastic
 	)
 
-	-- steel drill-spike on top: stacked discs of shrinking radius, like the Dev Drill
-	local STEEL_TIP = Color3.fromRGB(225, 232, 245)
-	local upright = CFrame.Angles(0, 0, math.rad(90))
-	local radii = { 0.5, 0.37, 0.25, 0.13 }
-	local segHeight = 0.4
-	local sy = 1.75 -- just above the collar
-	for i, r in radii do
+	-- the mech: a normal pin has a drill-spike, tank tracks, and a battery. A "bare"
+	-- pin skips all that and just gets a simple needle on top (a clean classic pin).
+	if bare then
 		piece(
-			"Spike" .. i,
-			Vector3.new(segHeight, r * 2, r * 2),
-			CFrame.new(0, sy + segHeight / 2, 0) * upright,
-			STEEL:Lerp(STEEL_TIP, (i - 1) / #radii * 0.6),
+			"Needle",
+			Vector3.new(0.16, 2.6, 0.16),
+			CFrame.new(0, 3.0, 0),
+			STEEL,
+			Enum.Material.Metal
+		)
+	else
+		-- steel drill-spike on top: stacked discs of shrinking radius, like the Dev Drill
+		local STEEL_TIP = Color3.fromRGB(225, 232, 245)
+		local upright = CFrame.Angles(0, 0, math.rad(90))
+		local radii = { 0.5, 0.37, 0.25, 0.13 }
+		local segHeight = 0.4
+		local sy = 1.75 -- just above the collar
+		for i, r in radii do
+			piece(
+				"Spike" .. i,
+				Vector3.new(segHeight, r * 2, r * 2),
+				CFrame.new(0, sy + segHeight / 2, 0) * upright,
+				STEEL:Lerp(STEEL_TIP, (i - 1) / #radii * 0.6),
+				Enum.Material.Metal,
+				Enum.PartType.Cylinder
+			)
+			sy += segHeight
+		end
+
+		-- tank tracks at the base (it rolls, it doesn't walk): two dark treads, each with
+		-- a front and rear wheel poking out the ends
+		local TRACK = Color3.fromRGB(40, 43, 50)
+		local WHEEL = Color3.fromRGB(72, 76, 84)
+		for _, side in { -1, 1 } do
+			local x = side * 1.6
+			piece(
+				if side < 0 then "TrackL" else "TrackR",
+				Vector3.new(0.7, 1.0, 2.8),
+				CFrame.new(x, -1.2, 0),
+				TRACK,
+				Enum.Material.Metal
+			)
+			for _, z in { -1.0, 1.0 } do
+				piece(
+					"Wheel",
+					Vector3.new(0.78, 0.9, 0.9),
+					CFrame.new(x, -1.25, z),
+					WHEEL,
+					Enum.Material.SmoothPlastic,
+					Enum.PartType.Cylinder
+				)
+			end
+		end
+
+		-- a battery strapped to its back (+Z is the back, since it leads with its face)
+		local BATTERY = Color3.fromRGB(70, 180, 95)
+		local GOLD = Color3.fromRGB(235, 200, 80)
+		piece(
+			"Battery",
+			Vector3.new(1.2, 1.5, 0.7),
+			CFrame.new(0, 0.25, 1.15),
+			BATTERY,
+			Enum.Material.SmoothPlastic
+		)
+		piece( -- a stripe around its middle
+			"BatteryBand",
+			Vector3.new(1.26, 0.34, 0.76),
+			CFrame.new(0, 0.05, 1.15),
+			GOLD,
+			Enum.Material.SmoothPlastic
+		)
+		piece( -- the little + terminal on top
+			"BatteryTip",
+			Vector3.new(0.34, 0.34, 0.34),
+			CFrame.new(0, 1.05, 1.15) * CFrame.Angles(0, 0, math.rad(90)),
+			GOLD,
 			Enum.Material.Metal,
 			Enum.PartType.Cylinder
 		)
-		sy += segHeight
 	end
-
-	-- tank tracks at the base (it rolls, it doesn't walk): two dark treads, each with
-	-- a front and rear wheel poking out the ends
-	local TRACK = Color3.fromRGB(40, 43, 50)
-	local WHEEL = Color3.fromRGB(72, 76, 84)
-	for _, side in { -1, 1 } do
-		local x = side * 1.6
-		piece(
-			if side < 0 then "TrackL" else "TrackR",
-			Vector3.new(0.7, 1.0, 2.8),
-			CFrame.new(x, -1.2, 0),
-			TRACK,
-			Enum.Material.Metal
-		)
-		for _, z in { -1.0, 1.0 } do
-			piece(
-				"Wheel",
-				Vector3.new(0.78, 0.9, 0.9),
-				CFrame.new(x, -1.25, z),
-				WHEEL,
-				Enum.Material.SmoothPlastic,
-				Enum.PartType.Cylinder
-			)
-		end
-	end
-
-	-- a battery strapped to its back (+Z is the back, since it leads with its face)
-	local BATTERY = Color3.fromRGB(70, 180, 95)
-	local GOLD = Color3.fromRGB(235, 200, 80)
-	piece(
-		"Battery",
-		Vector3.new(1.2, 1.5, 0.7),
-		CFrame.new(0, 0.25, 1.15),
-		BATTERY,
-		Enum.Material.SmoothPlastic
-	)
-	piece( -- a stripe around its middle
-		"BatteryBand",
-		Vector3.new(1.26, 0.34, 0.76),
-		CFrame.new(0, 0.05, 1.15),
-		GOLD,
-		Enum.Material.SmoothPlastic
-	)
-	piece( -- the little + terminal on top
-		"BatteryTip",
-		Vector3.new(0.34, 0.34, 0.34),
-		CFrame.new(0, 1.05, 1.15) * CFrame.Angles(0, 0, math.rad(90)),
-		GOLD,
-		Enum.Material.Metal,
-		Enum.PartType.Cylinder
-	)
 
 	-- special gear (built BEFORE ScaleTo so it grows with the pin)
 	if attachment == "gun" then
@@ -866,8 +879,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	--   [0.30,0.34) -> stunner   (4%)  freezes every enemy in the area on impact
 	--   [0.34,0.38) -> kitty     (4%)  nine lives: pounces nine enemies before it dies
 	--   [0.38,0.42) -> confusion (4%)  turns enemies around to walk the wrong way
-	--   [0.42,0.52) -> rocket    (10%, max only)  high damage + speed, explodes
-	--   [0.52,0.77) -> shooter   (25%, max only)  carries a gun and fires as it advances
+	--   [0.42,0.46) -> plain     (4%)  a clean pin with no mech (just body + face + needle)
+	--   [0.46,0.56) -> rocket    (10%, max only)  high damage + speed, explodes
+	--   [0.56,0.81) -> shooter   (25%, max only)  carries a gun and fires as it advances
 	local roll = math.random()
 	local mega = roll < 0.01
 	local slingshot = not mega and roll < 0.06
@@ -925,6 +939,18 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not stunner
 		and not kitty
 		and roll < 0.42
+	local plain = not mega
+		and not slingshot
+		and not storm
+		and not classic
+		and not trojan
+		and not floater
+		and not medic
+		and not trail
+		and not stunner
+		and not kitty
+		and not confusion
+		and roll < 0.46
 	local rocket = maxLevel
 		and not mega
 		and not slingshot
@@ -937,7 +963,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not stunner
 		and not kitty
 		and not confusion
-		and roll < 0.52
+		and not plain
+		and roll < 0.56
 	local shooter = maxLevel
 		and not mega
 		and not slingshot
@@ -950,8 +977,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not stunner
 		and not kitty
 		and not confusion
+		and not plain
 		and not rocket
-		and roll < 0.77
+		and roll < 0.81
 
 	-- defaults: a plain random-color pin heading straight for the enemy spawn
 	local scale = 0.9
@@ -974,6 +1002,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local lives = 0
 	local confuseDuration = 0
 	local confuseRadius = 0
+	local bare = false -- plain pin: built without the mech (tracks/battery/drill spike)
 	local startWaypoint = startIdx - 1 -- normal pins head toward the spawn (path[1])
 
 	if mega then
@@ -1022,6 +1051,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		color = CONFUSE_COLOR -- swirly purple
 		confuseDuration = 3 -- turns enemies around for 3s
 		confuseRadius = ALLY_RAM_RADIUS * 2
+	elseif plain then
+		bare = true -- a clean classic pin, no mech — otherwise a normal rammer
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
 		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
@@ -1038,7 +1069,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	if classic then
 		model, primary = buildClassicPin("AllyPin", scale)
 	else
-		model, primary = buildPinEnemy("AllyPin", scale, color, attach)
+		model, primary = buildPinEnemy("AllyPin", scale, color, attach, bare)
 	end
 	local ally: Ally = {
 		model = model,
