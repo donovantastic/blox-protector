@@ -50,6 +50,7 @@ type Ally = {
 	chainCount: number, -- storm pin: number of chain-lightning jumps on impact (0 = none)
 	limbs: number, -- limb-shooter pin: limbs left to fire (0 = none / out of limbs)
 	maxLimbs: number, -- limb-shooter pin: starting limb count (for the slowdown math)
+	spawnOnDeath: number, -- trojan pin: how many mini pins it bursts into on impact (0 = none)
 }
 
 local EnemyService = {}
@@ -718,32 +719,36 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		end
 	end
 
-	-- Roll the variant from one random number. mega/slingshot/storm/classic can happen
-	-- at any level; shooter and rocket only appear once the factory is maxed out.
+	-- Roll the variant from one random number. mega/slingshot/storm/classic/trojan can
+	-- happen at any level; shooter and rocket only appear once the factory is maxed out.
 	--   [0, 0.01)   -> mega      (1%)
 	--   [0.01,0.06) -> slingshot (5%)  winds backward, then launches forward for 2x
 	--   [0.06,0.10) -> storm     (4%)  chain-lightning zaps a string of enemies
-	--   [0.10,0.13) -> classic   (3%)  angry Pin: roots enemies in place ("pins" them)
-	--   [0.13,0.23) -> rocket    (10%, max only)  high damage + speed, explodes
-	--   [0.23,0.48) -> shooter   (25%, max only)  carries a gun and fires as it advances
+	--   [0.10,0.13) -> classic   (3%)  fires its own limbs, slowing to a stop
+	--   [0.13,0.17) -> trojan    (4%)  bursts into a swarm of mini pins on impact
+	--   [0.17,0.27) -> rocket    (10%, max only)  high damage + speed, explodes
+	--   [0.27,0.52) -> shooter   (25%, max only)  carries a gun and fires as it advances
 	local roll = math.random()
 	local mega = roll < 0.01
 	local slingshot = not mega and roll < 0.06
 	local storm = not mega and not slingshot and roll < 0.10
 	local classic = not mega and not slingshot and not storm and roll < 0.13
+	local trojan = not mega and not slingshot and not storm and not classic and roll < 0.17
 	local rocket = maxLevel
 		and not mega
 		and not slingshot
 		and not storm
 		and not classic
-		and roll < 0.23
+		and not trojan
+		and roll < 0.27
 	local shooter = maxLevel
 		and not mega
 		and not slingshot
 		and not storm
 		and not classic
+		and not trojan
 		and not rocket
-		and roll < 0.48
+		and roll < 0.52
 
 	-- defaults: a plain random-color pin heading straight for the enemy spawn
 	local scale = 0.9
@@ -759,6 +764,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local chainCount = 0
 	local limbs = 0
 	local maxLimbs = 0
+	local spawnOnDeath = 0
 	local startWaypoint = startIdx - 1 -- normal pins head toward the spawn (path[1])
 
 	if mega then
@@ -779,6 +785,10 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		color = Color3.fromRGB(230, 30, 30) -- bright red
 		shootRange, shootDmg = 20, damage -- fires its OWN limbs at enemies
 		limbs, maxLimbs = 4, 4 -- ...and slows down with each one, until it stops
+	elseif trojan then
+		scale = 1.2 -- a fat, innocent-looking pin...
+		color = Color3.fromRGB(70, 110, 60) -- sneaky army green
+		spawnOnDeath = 6 -- ...that bursts into 6 mini pins on impact
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
 		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
@@ -814,6 +824,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		chainCount = chainCount,
 		limbs = limbs,
 		maxLimbs = maxLimbs,
+		spawnOnDeath = spawnOnDeath,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -892,6 +903,48 @@ local function throwLimb(from: Vector3, to: Vector3)
 	Debris:AddItem(p, 0.22)
 end
 
+-- Spawn a small plain pin near `position` (what a trojan bursts into). No variants —
+-- just a fast little random-color rammer, so trojans can't chain-burst forever.
+local function spawnMiniPin(damage: number, position: Vector3)
+	local path = Map.getPath()
+	if #path < 2 then
+		return
+	end
+	local startIdx = 1
+	local bestD = math.huge
+	for i, wp in path do
+		local d = (wp - position).Magnitude
+		if d < bestD then
+			bestD = d
+			startIdx = i
+		end
+	end
+	local color = Color3.fromHSV(math.random(), 0.6, 1)
+	local model, primary = buildPinEnemy("MiniPin", 0.5, color)
+	local ally: Ally = {
+		model = model,
+		primary = primary,
+		waypointIndex = startIdx - 1,
+		speed = ALLY_SPEED * 1.1,
+		damage = damage,
+		dead = false,
+		color = color,
+		ramRadius = ALLY_RAM_RADIUS * 0.7,
+		explodeRadius = 0,
+		shootRange = 0,
+		shootDamage = 0,
+		shootCooldown = 0,
+		windup = false,
+		chainCount = 0,
+		limbs = 0,
+		maxLimbs = 0,
+		spawnOnDeath = 0, -- minis never burst (no infinite spawn)
+	}
+	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
+	model.Parent = container
+	table.insert(allies, ally)
+end
+
 -- Move the friendly pins up the track; ram (and spend themselves on) the first
 -- enemy they touch.
 local function stepAllies(dt: number)
@@ -953,7 +1006,19 @@ local function stepAllies(dt: number)
 			end
 		end
 		if rammed then
-			if ally.chainCount > 0 then
+			if ally.spawnOnDeath > 0 then
+				-- TROJAN: small AoE hit, then BURST into a swarm of mini pins
+				for _, enemy in active do
+					local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+					if not enemy.dead and d <= ally.ramRadius then
+						EnemyService.takeDamage(enemy, ally.damage)
+					end
+				end
+				for _ = 1, ally.spawnOnDeath do
+					spawnMiniPin(ally.damage, ally.primary.Position)
+				end
+				bigBoom(ally.primary.Position, ally.color, ALLY_RAM_RADIUS * 1.5)
+			elseif ally.chainCount > 0 then
 				-- STORM pin: lightning leaps from enemy to nearest enemy, chaining
 				local hit: { [Enemy]: boolean } = {}
 				local fromPos = ally.primary.Position
