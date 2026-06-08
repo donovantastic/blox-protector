@@ -66,6 +66,16 @@ Prefer making balance/content changes here.
 5. **Never edit Roblox scripts inside Studio.** The code lives in these files and Rojo syncs it in.
    Studio is only for building maps + models.
 
+## Save work as you go (don't wait to be asked)
+**After each working change — a new tower, a fixed bug, a tuned number that feels right — commit it
+with a clear message and push to the current branch.** Don't batch a whole session into one commit,
+and don't wait to be asked. Each finished little thing = one commit, pushed. Two reasons it matters:
+- **Backup** — until it's pushed, the work lives only on this one machine. Pushing means it's safe in
+  the cloud even if something happens to the computer.
+- **Visibility** — Christian (and Claude) can see progress instead of waiting for one big merge.
+
+Push only to the **current working branch** — never `main` (it's protected, on purpose).
+
 ## Commit messages
 Short and clear. End with:
 ```
