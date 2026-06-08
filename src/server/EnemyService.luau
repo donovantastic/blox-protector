@@ -87,7 +87,7 @@ local function buildPinEnemy(
 	modelName: string,
 	scale: number?,
 	bodyColor: Color3?,
-	attachment: string? -- nil | "gun" | "rockets" — extra gear bolted on for special pins
+	attachment: string? -- nil | "gun" | "rockets" | "storm" — extra gear for special pins
 ): (Model, BasePart)
 	local RED = bodyColor or Color3.fromRGB(225, 35, 35) -- enemies red; friendly allies pass blue
 	local BLACK = Color3.fromRGB(20, 20, 22)
@@ -293,6 +293,37 @@ local function buildPinEnemy(
 				Color3.fromRGB(220, 50, 40),
 				Enum.Material.SmoothPlastic,
 				Enum.PartType.Cylinder
+			)
+		end
+	elseif attachment == "storm" then
+		-- a tesla rig: a glowing energy core on the spike + two antenna rods with
+		-- glowing ball tips. Neon material makes them actually emit light = very visible.
+		local NEON = Color3.fromRGB(120, 235, 255)
+		local ROD = Color3.fromRGB(60, 70, 90)
+		piece(
+			"Core",
+			Vector3.new(1.5, 1.5, 1.5),
+			CFrame.new(0, 3.7, 0),
+			NEON,
+			Enum.Material.Neon,
+			Enum.PartType.Ball
+		)
+		for _, side in { -1, 1 } do
+			local x = side * 1.45
+			piece(
+				"Rod",
+				Vector3.new(0.22, 1.5, 0.22),
+				CFrame.new(x, 2.5, 0),
+				ROD,
+				Enum.Material.Metal
+			)
+			piece(
+				"RodTip",
+				Vector3.new(0.55, 0.55, 0.55),
+				CFrame.new(x, 3.35, 0),
+				NEON,
+				Enum.Material.Neon,
+				Enum.PartType.Ball
 			)
 		end
 	end
@@ -597,7 +628,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		windup = true
 		startWaypoint = startIdx + 1 -- roll BACKWARD (toward the base) first
 	elseif storm then
+		scale = 1.1 -- a bit bigger so it stands out
 		color = Color3.fromRGB(80, 220, 255) -- electric cyan
+		attach = "storm" -- glowing tesla rig so it's unmistakable
 		chainCount = 6 -- lightning leaps to up to 6 enemies on impact
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
