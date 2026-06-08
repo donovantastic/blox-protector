@@ -48,8 +48,8 @@ type Ally = {
 	shootCooldown: number, -- shooter pin: seconds left until it can shoot again
 	windup: boolean, -- slingshot pin: true while rolling BACKWARD before it launches forward
 	chainCount: number, -- storm pin: number of chain-lightning jumps on impact (0 = none)
-	pinDuration: number, -- classic pin: seconds it roots enemies in place (0 = not a pinner)
-	pinRadius: number, -- classic pin: area of the pin effect
+	limbs: number, -- limb-shooter pin: limbs left to fire (0 = none / out of limbs)
+	maxLimbs: number, -- limb-shooter pin: starting limb count (for the slowdown math)
 }
 
 local EnemyService = {}
@@ -68,6 +68,7 @@ local frozenUntil = 0 -- Defrag card: all enemies stop moving until this clock t
 -- gets a random color when it spawns.
 local ALLY_SPEED = 16
 local ALLY_RAM_RADIUS = 5
+local LIMB_COLOR = Color3.fromRGB(245, 245, 250) -- the white limbs the classic pin throws
 
 -- The pink an enemy turns while it's covered in paint (mixed with its own color so
 -- you can still tell enemies apart). Purely visual — it's how you SEE the slow working.
@@ -339,8 +340,8 @@ local function buildPinEnemy(
 	return model, body
 end
 
--- The classic angry "Pin" (BFDI-style): same red spool body, but with a gritted-
--- teeth scowl, a long thin needle on top, and little arms — no tank gear at all.
+-- The classic "Pin" (BFDI-style): red spool body, smug face, a long thin needle on
+-- top, and four fire-able limbs — no tank gear. It shoots its own limbs at enemies.
 local function buildClassicPin(modelName: string, scale: number?): (Model, BasePart)
 	local RED = Color3.fromRGB(230, 30, 30)
 	local BLACK = Color3.fromRGB(20, 20, 22)
@@ -395,79 +396,70 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 		Enum.Material.SmoothPlastic
 	)
 
-	-- angry face: eyes, brows slanting DOWN toward the middle, gritted teeth
+	-- normal smug face (eyes, one raised brow, a smile) — same as the tank pin
 	local FZ = -0.78
 	piece(
 		"EyeL",
-		Vector3.new(0.34, 0.44, 0.12),
-		CFrame.new(-0.5, 0.55, FZ),
+		Vector3.new(0.32, 0.42, 0.12),
+		CFrame.new(-0.45, 0.45, FZ),
 		BLACK,
 		Enum.Material.SmoothPlastic
 	)
 	piece(
 		"EyeR",
-		Vector3.new(0.34, 0.44, 0.12),
-		CFrame.new(0.5, 0.55, FZ),
+		Vector3.new(0.32, 0.42, 0.12),
+		CFrame.new(0.45, 0.45, FZ),
 		BLACK,
 		Enum.Material.SmoothPlastic
 	)
 	piece(
-		"BrowL",
-		Vector3.new(0.56, 0.15, 0.12),
-		CFrame.new(-0.5, 0.95, FZ) * CFrame.Angles(0, 0, math.rad(22)),
+		"Brow",
+		Vector3.new(0.6, 0.14, 0.12),
+		CFrame.new(-0.45, 0.86, FZ) * CFrame.Angles(0, 0, math.rad(-18)),
 		BLACK,
 		Enum.Material.SmoothPlastic
 	)
 	piece(
-		"BrowR",
-		Vector3.new(0.56, 0.15, 0.12),
-		CFrame.new(0.5, 0.95, FZ) * CFrame.Angles(0, 0, math.rad(-22)),
+		"MouthMid",
+		Vector3.new(0.7, 0.14, 0.1),
+		CFrame.new(0, -0.45, FZ),
 		BLACK,
 		Enum.Material.SmoothPlastic
 	)
 	piece(
-		"Mouth",
-		Vector3.new(1.12, 0.56, 0.1),
-		CFrame.new(0, -0.25, FZ + 0.02),
+		"MouthL",
+		Vector3.new(0.34, 0.14, 0.1),
+		CFrame.new(-0.48, -0.36, FZ) * CFrame.Angles(0, 0, math.rad(38)),
 		BLACK,
 		Enum.Material.SmoothPlastic
 	)
 	piece(
-		"Teeth",
-		Vector3.new(1.0, 0.46, 0.12),
-		CFrame.new(0, -0.25, FZ),
-		WHITE,
+		"MouthR",
+		Vector3.new(0.34, 0.14, 0.1),
+		CFrame.new(0.48, -0.36, FZ) * CFrame.Angles(0, 0, math.rad(-38)),
+		BLACK,
 		Enum.Material.SmoothPlastic
 	)
-	for _, gx in { -0.33, 0, 0.33 } do
-		piece(
-			"Grit",
-			Vector3.new(0.07, 0.46, 0.14),
-			CFrame.new(gx, -0.25, FZ - 0.01),
-			BLACK,
-			Enum.Material.SmoothPlastic
-		)
-	end
 
 	-- a long thin needle on top
 	piece("Needle", Vector3.new(0.16, 2.6, 0.16), CFrame.new(0, 3.0, 0), STEEL, Enum.Material.Metal)
 
-	-- two little arms with white-glove hands
+	-- four FIRE-ABLE limbs (2 arms up top, 2 legs at the base). Named Limb1..4 so they
+	-- can be detached one at a time as it shoots them off.
 	for _, side in { -1, 1 } do
 		piece(
-			"Arm",
-			Vector3.new(0.22, 1.3, 0.22),
-			CFrame.new(side * 1.3, -0.2, -0.1) * CFrame.Angles(0, 0, math.rad(side * 30)),
-			RED,
+			if side < 0 then "Limb1" else "Limb2",
+			Vector3.new(0.26, 1.4, 0.26),
+			CFrame.new(side * 1.35, 0.2, -0.1) * CFrame.Angles(0, 0, math.rad(side * 35)),
+			WHITE,
 			Enum.Material.SmoothPlastic
 		)
 		piece(
-			"Hand",
-			Vector3.new(0.55, 0.55, 0.55),
-			CFrame.new(side * 1.85, -0.8, -0.1),
+			if side < 0 then "Limb3" else "Limb4",
+			Vector3.new(0.26, 1.3, 0.26),
+			CFrame.new(side * 0.7, -1.2, -0.1) * CFrame.Angles(0, 0, math.rad(side * 16)),
 			WHITE,
-			Enum.Material.SmoothPlastic,
-			Enum.PartType.Ball
+			Enum.Material.SmoothPlastic
 		)
 	end
 
@@ -765,8 +757,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local shootDmg = 0
 	local windup = false
 	local chainCount = 0
-	local pinDuration = 0
-	local pinRadius = 0
+	local limbs = 0
+	local maxLimbs = 0
 	local startWaypoint = startIdx - 1 -- normal pins head toward the spawn (path[1])
 
 	if mega then
@@ -784,9 +776,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		attach = "storm" -- glowing tesla rig so it's unmistakable
 		chainCount = 6 -- lightning leaps to up to 6 enemies on impact
 	elseif classic then
-		color = Color3.fromRGB(230, 30, 30) -- bright angry red
-		pinDuration = 2.5 -- roots every enemy in the area for 2.5s
-		pinRadius = ALLY_RAM_RADIUS * 2
+		color = Color3.fromRGB(230, 30, 30) -- bright red
+		shootRange, shootDmg = 20, damage -- fires its OWN limbs at enemies
+		limbs, maxLimbs = 4, 4 -- ...and slows down with each one, until it stops
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
 		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
@@ -820,8 +812,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		shootCooldown = 0,
 		windup = windup,
 		chainCount = chainCount,
-		pinDuration = pinDuration,
-		pinRadius = pinRadius,
+		limbs = limbs,
+		maxLimbs = maxLimbs,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -869,6 +861,37 @@ local function beam(from: Vector3, to: Vector3, color: Color3)
 	Debris:AddItem(p, 0.06)
 end
 
+-- Detach one limb (a part named "Limb..") from a pin and return where it was, so we
+-- can fling it from there. Returns nil if there are no limbs left.
+local function detachLimb(model: Model): Vector3?
+	for _, p in model:GetChildren() do
+		if p:IsA("BasePart") and string.sub(p.Name, 1, 4) == "Limb" then
+			local pos = p.Position
+			p:Destroy()
+			return pos
+		end
+	end
+	return nil
+end
+
+-- Fling a limb (a little white part) from `from` to `to`.
+local function throwLimb(from: Vector3, to: Vector3)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CastShadow = false
+	p.Material = Enum.Material.SmoothPlastic
+	p.Color = LIMB_COLOR
+	p.Size = Vector3.new(0.3, 1.0, 0.3)
+	p.CFrame = CFrame.new(from, to)
+	p.Parent = Workspace
+	TweenService:Create(p, TweenInfo.new(0.18, Enum.EasingStyle.Linear), {
+		CFrame = CFrame.new(to, to + (to - from)),
+	}):Play()
+	Debris:AddItem(p, 0.22)
+end
+
 -- Move the friendly pins up the track; ram (and spend themselves on) the first
 -- enemy they touch.
 local function stepAllies(dt: number)
@@ -896,8 +919,21 @@ local function stepAllies(dt: number)
 					end
 				end
 				if nearest then
+					local toPos = nearest.primary.Position -- grab before it might die
 					EnemyService.takeDamage(nearest, ally.shootDamage)
-					beam(ally.primary.Position, nearest.primary.Position, ally.color)
+					if ally.limbs > 0 then
+						-- limb-shooter: hurl a limb, lose it, and slow down a notch
+						local from = detachLimb(ally.model) or ally.primary.Position
+						throwLimb(from, toPos)
+						ally.limbs -= 1
+						ally.speed = ALLY_SPEED * (ally.limbs / ally.maxLimbs)
+						if ally.limbs <= 0 then
+							ally.shootRange = 0 -- out of limbs — can't shoot
+							ally.speed = 0 -- ...and stopped completely
+						end
+					else
+						beam(ally.primary.Position, toPos, ally.color)
+					end
 					ally.shootCooldown = 0.6
 				else
 					ally.shootCooldown = 0.2 -- nothing in range; check again soon
@@ -917,17 +953,7 @@ local function stepAllies(dt: number)
 			end
 		end
 		if rammed then
-			if ally.pinDuration > 0 then
-				-- CLASSIC pin: PIN every enemy in the area in place (speed 0) + damage
-				for _, enemy in active do
-					local d = (enemy.primary.Position - ally.primary.Position).Magnitude
-					if not enemy.dead and d <= ally.pinRadius then
-						EnemyService.applySlow(enemy, 0, ally.pinDuration) -- rooted
-						EnemyService.takeDamage(enemy, ally.damage)
-					end
-				end
-				bigBoom(ally.primary.Position, ally.color, ally.pinRadius)
-			elseif ally.chainCount > 0 then
+			if ally.chainCount > 0 then
 				-- STORM pin: lightning leaps from enemy to nearest enemy, chaining
 				local hit: { [Enemy]: boolean } = {}
 				local fromPos = ally.primary.Position
