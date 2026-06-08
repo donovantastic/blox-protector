@@ -420,6 +420,19 @@ function EnemyService.takeDamage(enemy: Enemy, amount: number): boolean
 	return false
 end
 
+-- Wipe the board for a fresh round: destroy every enemy AND every friendly pin.
+function EnemyService.reset()
+	for _, enemy in active do
+		enemy.model:Destroy()
+	end
+	table.clear(active)
+	for _, ally in allies do
+		ally.model:Destroy()
+	end
+	table.clear(allies)
+	frozenUntil = 0
+end
+
 -- Freeze all enemies for `duration` seconds (Defrag card).
 function EnemyService.freezeAll(duration: number)
 	frozenUntil = os.clock() + duration

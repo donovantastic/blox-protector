@@ -179,6 +179,7 @@ ModeService.onChange = function(mode)
 		GameState.reset()
 		Economy.init()
 		TowerService.reset()
+		EnemyService.reset() -- clear leftover enemies + friendly pins from the last round
 		teleportAll(CFrame.new(0, 6, 55))
 		WaveManager.start(act, act == 2)
 	end

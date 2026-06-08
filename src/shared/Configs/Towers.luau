@@ -165,15 +165,16 @@ local Towers: { [string]: Tower } = {
 		name = "Pin Factory",
 		desc = "Stamps out friendly blue push-pins that charge UP the lane and kamikaze-ram the corruption.",
 		model = "Summoner",
-		cost = 120,
+		cost = 1, -- TEMP: $1 for testing (was 120)
 		placementRadius = 4,
 		fireRate = 0.5, -- one friendly pin every 2 seconds
 		targeting = "first", -- unused for summoners, but required
 		summon = true, -- spawns friendly pins instead of shooting
 		levels = {
-			{ range = 0, damage = 30, cost = 120 }, -- damage = each pin's ram hit
-			{ range = 0, damage = 50, cost = 190 },
-			{ range = 0, damage = 85, cost = 320 },
+			-- TEMP: all $1 for testing (were 120 / 190 / 320)
+			{ range = 0, damage = 30, cost = 1 }, -- damage = each pin's ram hit
+			{ range = 0, damage = 50, cost = 1 },
+			{ range = 0, damage = 85, cost = 1 },
 		},
 	},
 
