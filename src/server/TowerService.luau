@@ -432,12 +432,13 @@ function TowerService.step(dt: number)
 				-- Stagger them ~0.2s apart so they form a little marching column.
 				local dmg = level(tower).damage
 				local pos = tower.position
+				local maxed = tower.level >= #tower.def.levels -- unlocks the rare variants
 				for k = 1, tower.level do
 					if k == 1 then
-						EnemyService.spawnAlly(dmg, pos)
+						EnemyService.spawnAlly(dmg, pos, maxed)
 					else
 						task.delay((k - 1) * 0.2, function()
-							EnemyService.spawnAlly(dmg, pos)
+							EnemyService.spawnAlly(dmg, pos, maxed)
 						end)
 					end
 				end

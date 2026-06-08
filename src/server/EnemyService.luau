@@ -43,6 +43,9 @@ type Ally = {
 	color: Color3, -- this pin's random body color (also used for its pop)
 	ramRadius: number, -- how close an enemy must be to get rammed (bigger for the mega pin)
 	explodeRadius: number, -- mega pin: AoE blast radius on impact (0 = normal single-target pin)
+	shootRange: number, -- shooter pin: how far it can shoot enemies (0 = no gun)
+	shootDamage: number, -- shooter pin: damage per shot
+	shootCooldown: number, -- shooter pin: seconds left until it can shoot again
 }
 
 local EnemyService = {}
@@ -81,7 +84,8 @@ local GRAYBOX_COLORS: { [string]: Color3 } = {
 local function buildPinEnemy(
 	modelName: string,
 	scale: number?,
-	bodyColor: Color3?
+	bodyColor: Color3?,
+	attachment: string? -- nil | "gun" | "rockets" — extra gear bolted on for special pins
 ): (Model, BasePart)
 	local RED = bodyColor or Color3.fromRGB(225, 35, 35) -- enemies red; friendly allies pass blue
 	local BLACK = Color3.fromRGB(20, 20, 22)
@@ -250,6 +254,46 @@ local function buildPinEnemy(
 		Enum.Material.Metal,
 		Enum.PartType.Cylinder
 	)
+
+	-- special gear (built BEFORE ScaleTo so it grows with the pin)
+	if attachment == "gun" then
+		local GUNMETAL = Color3.fromRGB(45, 48, 56)
+		piece(
+			"Gun",
+			Vector3.new(0.6, 0.55, 1.1),
+			CFrame.new(0, 2.0, -0.4),
+			GUNMETAL,
+			Enum.Material.Metal
+		)
+		piece(
+			"Barrel",
+			Vector3.new(1.6, 0.3, 0.3),
+			CFrame.new(0, 2.05, -1.2) * CFrame.Angles(0, math.rad(90), 0), -- point it forward
+			GUNMETAL,
+			Enum.Material.Metal,
+			Enum.PartType.Cylinder
+		)
+	elseif attachment == "rockets" then
+		for _, side in { -1, 1 } do
+			local x = side * 1.75
+			piece(
+				"Rocket",
+				Vector3.new(1.8, 0.7, 0.7),
+				CFrame.new(x, 0.1, -0.1) * CFrame.Angles(0, math.rad(90), 0),
+				Color3.fromRGB(235, 235, 240),
+				Enum.Material.SmoothPlastic,
+				Enum.PartType.Cylinder
+			)
+			piece( -- red nose cone
+				"RocketTip",
+				Vector3.new(0.5, 0.62, 0.62),
+				CFrame.new(x, 0.1, -1.05) * CFrame.Angles(0, math.rad(90), 0),
+				Color3.fromRGB(220, 50, 40),
+				Enum.Material.SmoothPlastic,
+				Enum.PartType.Cylinder
+			)
+		end
+	end
 
 	model.PrimaryPart = body
 	-- grow the whole model as one (bosses are big). ScaleTo scales every part around
@@ -491,8 +535,8 @@ end
 
 -- Spawn a FRIENDLY pin near `nearPosition` that charges UP the track (toward the
 -- enemy spawn) and rams the first enemy it meets for `damage`. Used by the Pin
--- Factory tower. The ally is "used up" the moment it rams something.
-function EnemyService.spawnAlly(damage: number, nearPosition: Vector3)
+-- Factory tower. `maxLevel` (the factory is fully upgraded) unlocks rarer variants.
+function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel: boolean)
 	local path = Map.getPath()
 	if #path < 2 then
 		return
@@ -507,23 +551,56 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3)
 			startIdx = i
 		end
 	end
-	-- 1% jackpot: a giant gold pin that hits for 10x. Otherwise a normal random-color pin.
-	local mega = math.random() < 0.01
-	local color = if mega
-		then Color3.fromRGB(255, 215, 0)
-		else Color3.fromHSV(math.random(), 0.65, 1)
-	local model, primary = buildPinEnemy("AllyPin", if mega then 2.6 else 0.9, color)
+
+	-- Roll the variant from one random number. The mega jackpot can always happen;
+	-- the shooter and rocket variants only appear once the factory is maxed out.
+	--   [0, 0.01)  -> mega   (1%)
+	--   [0.01,0.11)-> rocket (10%, max only)  high damage + speed, explodes
+	--   [0.11,0.36)-> shooter(25%, max only)  carries a gun and fires as it advances
+	local roll = math.random()
+	local mega = roll < 0.01
+	local rocket = maxLevel and not mega and roll < 0.11
+	local shooter = maxLevel and not mega and not rocket and roll < 0.36
+
+	-- defaults: a plain random-color pin
+	local scale = 0.9
+	local color = Color3.fromHSV(math.random(), 0.65, 1)
+	local speed = ALLY_SPEED
+	local dmg = damage
+	local ramR = ALLY_RAM_RADIUS
+	local explodeR = 0
+	local attach: string? = nil
+	local shootRange = 0
+	local shootDmg = 0
+
+	if mega then
+		scale, color, dmg = 2.6, Color3.fromRGB(255, 215, 0), damage * 10
+		ramR, explodeR = ALLY_RAM_RADIUS * 2.5, ALLY_RAM_RADIUS * 5
+	elseif rocket then
+		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
+		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
+		ramR, explodeR = ALLY_RAM_RADIUS * 1.4, ALLY_RAM_RADIUS * 2 -- the rockets blow up
+		attach = "rockets"
+	elseif shooter then
+		color = Color3.fromRGB(120, 130, 150)
+		attach = "gun"
+		shootRange, shootDmg = 22, damage -- shoots enemies as it rolls in
+	end
+
+	local model, primary = buildPinEnemy("AllyPin", scale, color, attach)
 	local ally: Ally = {
 		model = model,
 		primary = primary,
 		waypointIndex = startIdx - 1, -- head toward the enemy spawn
-		speed = ALLY_SPEED,
-		damage = if mega then damage * 10 else damage,
+		speed = speed,
+		damage = dmg,
 		dead = false,
 		color = color,
-		ramRadius = if mega then ALLY_RAM_RADIUS * 2.5 else ALLY_RAM_RADIUS,
-		-- mega pin explodes in a blast 5x the normal pin's reach; normal pins don't explode
-		explodeRadius = if mega then ALLY_RAM_RADIUS * 5 else 0,
+		ramRadius = ramR,
+		explodeRadius = explodeR,
+		shootRange = shootRange,
+		shootDamage = shootDmg,
+		shootCooldown = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -552,6 +629,25 @@ local function bigBoom(position: Vector3, color: Color3, radius: number)
 	Debris:AddItem(p, 0.4)
 end
 
+-- A quick shot line from a shooter pin to its target.
+local function beam(from: Vector3, to: Vector3, color: Color3)
+	local dist = (to - from).Magnitude
+	if dist < 0.05 then
+		return
+	end
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CastShadow = false
+	p.Material = Enum.Material.Neon
+	p.Color = color
+	p.Size = Vector3.new(0.18, 0.18, dist)
+	p.CFrame = CFrame.lookAt((from + to) / 2, to)
+	p.Parent = Workspace
+	Debris:AddItem(p, 0.06)
+end
+
 -- Move the friendly pins up the track; ram (and spend themselves on) the first
 -- enemy they touch.
 local function stepAllies(dt: number)
@@ -561,6 +657,31 @@ local function stepAllies(dt: number)
 		if ally.dead then
 			table.remove(allies, i)
 			continue
+		end
+
+		-- shooter pins fire at the nearest enemy in range as they advance
+		if ally.shootRange > 0 then
+			ally.shootCooldown -= dt
+			if ally.shootCooldown <= 0 then
+				local nearest: Enemy? = nil
+				local nd = ally.shootRange
+				for _, enemy in active do
+					if not enemy.dead then
+						local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+						if d <= nd then
+							nd = d
+							nearest = enemy
+						end
+					end
+				end
+				if nearest then
+					EnemyService.takeDamage(nearest, ally.shootDamage)
+					beam(ally.primary.Position, nearest.primary.Position, ally.color)
+					ally.shootCooldown = 0.6
+				else
+					ally.shootCooldown = 0.2 -- nothing in range; check again soon
+				end
+			end
 		end
 
 		-- did we bump an enemy?
