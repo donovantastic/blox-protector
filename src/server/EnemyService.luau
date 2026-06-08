@@ -30,6 +30,7 @@ export type Enemy = {
 	baseColor: Color3, -- the enemy's normal color, so we can restore it after the paint fades
 	abilityCooldown: number, -- seconds left before this enemy can use its drill ability again
 	stunnedUntil: number, -- os.clock() time a stun wears off (0 = not stunned); frozen + yellow
+	confusedUntil: number, -- os.clock() time confusion wears off; walks BACKWARD + purple
 }
 
 -- A friendly pin summoned by the Pin Factory tower: walks the track the WRONG way
@@ -61,6 +62,8 @@ export type Ally = {
 	stunDuration: number, -- stunner pin: seconds it freezes enemies on impact (0 = no stun)
 	stunRadius: number, -- stunner pin: area of the stun
 	lives: number, -- kitty pin: pounces left before it despawns (0 = not a kitty / used up)
+	confuseDuration: number, -- confusion pin: seconds it turns enemies around (0 = none)
+	confuseRadius: number, -- confusion pin: area of the confusion
 }
 
 -- A glowing blob a trail pin leaves behind: it speeds up friendly pins that pass
@@ -99,6 +102,7 @@ local TRAIL_BOOST = 1.6 -- how much faster pins move inside a trail
 -- you can still tell enemies apart). Purely visual — it's how you SEE the slow working.
 local PAINT_COLOR = Color3.fromRGB(255, 95, 200)
 local STUN_COLOR = Color3.fromRGB(255, 235, 90) -- enemies flash yellow while stunned
+local CONFUSE_COLOR = Color3.fromRGB(180, 90, 240) -- enemies turn purple while confused
 
 local GRAYBOX_COLORS: { [string]: Color3 } = {
 	Grunt = Color3.fromRGB(200, 80, 80),
@@ -714,6 +718,7 @@ function EnemyService.spawn(enemyType: string, healthMult: number): Enemy?
 		-- wait one full cooldown before the first drill (a brief grace period)
 		abilityCooldown = if def.ability then def.ability.cooldown else 0,
 		stunnedUntil = 0,
+		confusedUntil = 0,
 	}
 	enemy.bar = buildHealthBar(primary)
 	table.insert(active, enemy)
@@ -780,6 +785,14 @@ function EnemyService.stunEnemy(enemy: Enemy, duration: number)
 		return
 	end
 	enemy.stunnedUntil = os.clock() + duration
+end
+
+-- Confuse ONE enemy: it walks BACKWARD (toward the spawn) for `duration` seconds.
+function EnemyService.confuseEnemy(enemy: Enemy, duration: number)
+	if enemy.dead then
+		return
+	end
+	enemy.confusedUntil = os.clock() + duration
 end
 
 -- Bounce ONE enemy `studs` BACKWARD along the path (the Superball tower). We don't
@@ -852,8 +865,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	--   [0.26,0.30) -> trail     (4%)  lays a glowing trail: speeds up pins + burns enemies
 	--   [0.30,0.34) -> stunner   (4%)  freezes every enemy in the area on impact
 	--   [0.34,0.38) -> kitty     (4%)  nine lives: pounces nine enemies before it dies
-	--   [0.38,0.48) -> rocket    (10%, max only)  high damage + speed, explodes
-	--   [0.48,0.73) -> shooter   (25%, max only)  carries a gun and fires as it advances
+	--   [0.38,0.42) -> confusion (4%)  turns enemies around to walk the wrong way
+	--   [0.42,0.52) -> rocket    (10%, max only)  high damage + speed, explodes
+	--   [0.52,0.77) -> shooter   (25%, max only)  carries a gun and fires as it advances
 	local roll = math.random()
 	local mega = roll < 0.01
 	local slingshot = not mega and roll < 0.06
@@ -900,6 +914,17 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not trail
 		and not stunner
 		and roll < 0.38
+	local confusion = not mega
+		and not slingshot
+		and not storm
+		and not classic
+		and not trojan
+		and not floater
+		and not medic
+		and not trail
+		and not stunner
+		and not kitty
+		and roll < 0.42
 	local rocket = maxLevel
 		and not mega
 		and not slingshot
@@ -911,7 +936,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not trail
 		and not stunner
 		and not kitty
-		and roll < 0.48
+		and not confusion
+		and roll < 0.52
 	local shooter = maxLevel
 		and not mega
 		and not slingshot
@@ -923,8 +949,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not trail
 		and not stunner
 		and not kitty
+		and not confusion
 		and not rocket
-		and roll < 0.73
+		and roll < 0.77
 
 	-- defaults: a plain random-color pin heading straight for the enemy spawn
 	local scale = 0.9
@@ -945,6 +972,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local stunDuration = 0
 	local stunRadius = 0
 	local lives = 0
+	local confuseDuration = 0
+	local confuseRadius = 0
 	local startWaypoint = startIdx - 1 -- normal pins head toward the spawn (path[1])
 
 	if mega then
@@ -989,6 +1018,10 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		color = Color3.fromRGB(255, 170, 80) -- orange tabby
 		attach = "kitty" -- ears, whiskers, a tail
 		lives = 9 -- nine lives: pounces nine enemies before it's gone
+	elseif confusion then
+		color = CONFUSE_COLOR -- swirly purple
+		confuseDuration = 3 -- turns enemies around for 3s
+		confuseRadius = ALLY_RAM_RADIUS * 2
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
 		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
@@ -1034,6 +1067,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		stunDuration = stunDuration,
 		stunRadius = stunRadius,
 		lives = lives,
+		confuseDuration = confuseDuration,
+		confuseRadius = confuseRadius,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -1086,6 +1121,8 @@ function EnemyService.spawnDrillPin(damage: number, position: Vector3)
 		stunDuration = 0,
 		stunRadius = 0,
 		lives = 0,
+		confuseDuration = 0,
+		confuseRadius = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -1209,6 +1246,8 @@ local function spawnMiniPin(damage: number, position: Vector3)
 		stunDuration = 0,
 		stunRadius = 0,
 		lives = 0,
+		confuseDuration = 0,
+		confuseRadius = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -1403,6 +1442,16 @@ local function stepAllies(dt: number)
 					end
 				end
 				bigBoom(ally.primary.Position, ally.color, ally.stunRadius)
+			elseif ally.confuseDuration > 0 then
+				-- CONFUSION: turn every enemy in the area around (and a small hit)
+				for _, enemy in active do
+					local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+					if not enemy.dead and d <= ally.confuseRadius then
+						EnemyService.confuseEnemy(enemy, ally.confuseDuration)
+						EnemyService.takeDamage(enemy, ally.damage)
+					end
+				end
+				bigBoom(ally.primary.Position, ally.color, ally.confuseRadius)
 			elseif ally.spawnOnDeath > 0 then
 				-- TROJAN: small AoE hit, then BURST into a swarm of mini pins
 				for _, enemy in active do
@@ -1513,12 +1562,14 @@ function EnemyService.step(dt: number)
 			continue
 		end
 
-		-- Status visual: yellow while stunned, pink while painted, else normal color.
+		-- Status visual: yellow (stunned), purple (confused), pink (painted), else normal.
 		local now = os.clock()
 		local stunned = now < enemy.stunnedUntil
+		local confused = now < enemy.confusedUntil
 		local painted = now < enemy.slowUntil
 		local wantColor = if stunned
 			then enemy.baseColor:Lerp(STUN_COLOR, 0.7)
+			elseif confused then enemy.baseColor:Lerp(CONFUSE_COLOR, 0.7)
 			elseif painted then enemy.baseColor:Lerp(PAINT_COLOR, 0.7)
 			else enemy.baseColor
 		if enemy.primary.Color ~= wantColor then
@@ -1529,8 +1580,13 @@ function EnemyService.step(dt: number)
 			continue -- defragged or stunned: hold position
 		end
 
-		local target = path[enemy.waypointIndex]
+		-- confused enemies walk BACKWARD (toward the spawn) instead of forward
+		local targetIdx = if confused then enemy.waypointIndex - 1 else enemy.waypointIndex
+		local target = path[targetIdx]
 		if not target then
+			if confused then
+				continue -- backed all the way to the spawn; just wait out the confusion
+			end
 			-- reached the Base → leak
 			despawn(enemy)
 			table.remove(active, i)
@@ -1548,11 +1604,16 @@ function EnemyService.step(dt: number)
 		local newGround: Vector3
 		if step >= distLeft then
 			newGround = target
-			enemy.waypointIndex += 1
-			enemy.distance += distLeft
+			if confused then
+				enemy.waypointIndex = math.max(2, enemy.waypointIndex - 1)
+				enemy.distance = math.max(0, enemy.distance - distLeft)
+			else
+				enemy.waypointIndex += 1
+				enemy.distance += distLeft
+			end
 		else
 			newGround = pos + toTarget.Unit * step
-			enemy.distance += step
+			enemy.distance = math.max(0, enemy.distance + (if confused then -step else step))
 		end
 
 		local newPos = newGround + Vector3.new(0, enemy.primary.Size.Y / 2, 0)
