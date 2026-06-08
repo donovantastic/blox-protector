@@ -40,6 +40,7 @@ type Ally = {
 	speed: number,
 	damage: number,
 	dead: boolean,
+	color: Color3, -- this pin's random body color (also used for its pop)
 }
 
 local EnemyService = {}
@@ -54,8 +55,8 @@ local nextId = 0
 local container: Folder
 local frozenUntil = 0 -- Defrag card: all enemies stop moving until this clock time
 
--- Friendly pins (allies) are blue, charge fast, and ram anything within this radius.
-local ALLY_COLOR = Color3.fromRGB(70, 140, 240)
+-- Friendly pins (allies) charge fast and ram anything within this radius. Each one
+-- gets a random color when it spawns.
 local ALLY_SPEED = 16
 local ALLY_RAM_RADIUS = 5
 
@@ -491,7 +492,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3)
 			startIdx = i
 		end
 	end
-	local model, primary = buildPinEnemy("AllyPin", 0.9, ALLY_COLOR)
+	local color = Color3.fromHSV(math.random(), 0.65, 1) -- a random vivid hue per pin
+	local model, primary = buildPinEnemy("AllyPin", 0.9, color)
 	local ally: Ally = {
 		model = model,
 		primary = primary,
@@ -499,6 +501,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3)
 		speed = ALLY_SPEED,
 		damage = damage,
 		dead = false,
+		color = color,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -526,7 +529,7 @@ local function stepAllies(dt: number)
 			end
 		end
 		if rammed then
-			deathPop(ally.primary.Position, ALLY_COLOR)
+			deathPop(ally.primary.Position, ally.color)
 			ally.model:Destroy()
 			table.remove(allies, i)
 			continue

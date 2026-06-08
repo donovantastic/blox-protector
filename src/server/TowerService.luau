@@ -428,7 +428,19 @@ function TowerService.step(dt: number)
 		end
 		if tower.def.summon then
 			if tower.cooldown <= 0 then
-				EnemyService.spawnAlly(level(tower).damage, tower.position)
+				-- upgrades spawn MORE pins: level 1 = 1, level 2 = 2, level 3 = 3.
+				-- Stagger them ~0.2s apart so they form a little marching column.
+				local dmg = level(tower).damage
+				local pos = tower.position
+				for k = 1, tower.level do
+					if k == 1 then
+						EnemyService.spawnAlly(dmg, pos)
+					else
+						task.delay((k - 1) * 0.2, function()
+							EnemyService.spawnAlly(dmg, pos)
+						end)
+					end
+				end
 				tower.cooldown = 1 / tower.def.fireRate
 			end
 			continue -- spawns friendly pins; never aims/shoots
