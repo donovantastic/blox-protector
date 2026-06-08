@@ -803,7 +803,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	elseif floater then
 		scale = 0.55 -- a little floating bomb
 		color = Color3.fromRGB(255, 160, 40) -- warning orange
-		floatHeight = 3 -- hovers above the track
+		floatHeight = 1 -- hovers just a little off the track
 		explodeR = ALLY_RAM_RADIUS * 1.5 -- explodes the moment it touches an enemy
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
