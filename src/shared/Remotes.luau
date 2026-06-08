@@ -17,6 +17,7 @@ local EVENTS = {
 	-- client -> server
 	"PlaceTower",
 	"UpgradeTower",
+	"UpgradeAllTowers", -- () upgrade every placed tower one level, paying full cost
 	"SellTower",
 	"DialogueDone", -- () client finished the intro sequence; server may start waves
 	"RequestState", -- () client HUD is ready; server replies with a state snapshot

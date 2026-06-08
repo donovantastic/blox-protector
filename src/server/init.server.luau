@@ -261,6 +261,9 @@ Remotes.event("UpgradeTower").OnServerEvent:Connect(function(player, towerId)
 	end
 	report(player, TowerService.upgrade(player, towerId))
 end)
+Remotes.event("UpgradeAllTowers").OnServerEvent:Connect(function(player)
+	report(player, TowerService.upgradeAll(player))
+end)
 Remotes.event("SellTower").OnServerEvent:Connect(function(player, towerId)
 	if typeof(towerId) ~= "number" then
 		return

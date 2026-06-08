@@ -570,6 +570,29 @@ function TowerService.upgrade(_player: Player, towerId: number): (boolean, strin
 	return true, "ok"
 end
 
+-- Upgrade every placed tower by one level, paying each tower's normal next-level
+-- cost. Towers already at max level (or that we can't afford) are skipped, so a
+-- partial purchase still goes through — you get as many upgrades as your cash buys.
+function TowerService.upgradeAll(_player: Player): (boolean, string)
+	if GameState.getStatus() ~= "playing" then
+		return false, "Round's over"
+	end
+	local upgraded = 0
+	for _, tower in towers do
+		local nextLevel = tower.def.levels[tower.level + 1]
+		if nextLevel and Economy.trySpend(nextLevel.cost) then
+			tower.level += 1
+			tower.spent += nextLevel.cost
+			applyAttributes(tower)
+			upgraded += 1
+		end
+	end
+	if upgraded == 0 then
+		return false, "Nothing to upgrade"
+	end
+	return true, ("Upgraded %d tower%s"):format(upgraded, if upgraded == 1 then "" else "s")
+end
+
 function TowerService.sell(_player: Player, towerId: number): (boolean, string)
 	if GameState.getStatus() ~= "playing" then
 		return false, "Round's over"
