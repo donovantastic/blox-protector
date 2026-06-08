@@ -47,6 +47,7 @@ type Ally = {
 	shootDamage: number, -- shooter pin: damage per shot
 	shootCooldown: number, -- shooter pin: seconds left until it can shoot again
 	windup: boolean, -- slingshot pin: true while rolling BACKWARD before it launches forward
+	chainCount: number, -- storm pin: number of chain-lightning jumps on impact (0 = none)
 }
 
 local EnemyService = {}
@@ -553,17 +554,24 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		end
 	end
 
-	-- Roll the variant from one random number. Mega + slingshot can happen at any
-	-- level; shooter and rocket only appear once the factory is maxed out.
+	-- Roll the variant from one random number. Mega + slingshot + storm can happen at
+	-- any level; shooter and rocket only appear once the factory is maxed out.
 	--   [0, 0.01)   -> mega      (1%)
 	--   [0.01,0.06) -> slingshot (5%)  winds backward, then launches forward for 2x
-	--   [0.06,0.16) -> rocket    (10%, max only)  high damage + speed, explodes
-	--   [0.16,0.41) -> shooter   (25%, max only)  carries a gun and fires as it advances
+	--   [0.06,0.10) -> storm     (4%)  chain-lightning zaps a string of enemies
+	--   [0.10,0.20) -> rocket    (10%, max only)  high damage + speed, explodes
+	--   [0.20,0.45) -> shooter   (25%, max only)  carries a gun and fires as it advances
 	local roll = math.random()
 	local mega = roll < 0.01
 	local slingshot = not mega and roll < 0.06
-	local rocket = maxLevel and not mega and not slingshot and roll < 0.16
-	local shooter = maxLevel and not mega and not slingshot and not rocket and roll < 0.41
+	local storm = not mega and not slingshot and roll < 0.10
+	local rocket = maxLevel and not mega and not slingshot and not storm and roll < 0.20
+	local shooter = maxLevel
+		and not mega
+		and not slingshot
+		and not storm
+		and not rocket
+		and roll < 0.45
 
 	-- defaults: a plain random-color pin heading straight for the enemy spawn
 	local scale = 0.9
@@ -576,6 +584,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local shootRange = 0
 	local shootDmg = 0
 	local windup = false
+	local chainCount = 0
 	local startWaypoint = startIdx - 1 -- normal pins head toward the spawn (path[1])
 
 	if mega then
@@ -587,6 +596,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		ramR = ALLY_RAM_RADIUS * 1.2
 		windup = true
 		startWaypoint = startIdx + 1 -- roll BACKWARD (toward the base) first
+	elseif storm then
+		color = Color3.fromRGB(80, 220, 255) -- electric cyan
+		chainCount = 6 -- lightning leaps to up to 6 enemies on impact
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
 		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
@@ -613,6 +625,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		shootDamage = shootDmg,
 		shootCooldown = 0,
 		windup = windup,
+		chainCount = chainCount,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -708,22 +721,50 @@ local function stepAllies(dt: number)
 			end
 		end
 		if rammed then
-			-- normal pin hits the one it touched; the MEGA pin EXPLODES, hitting every
-			-- enemy in a blast 5x as wide
-			local blast = if ally.explodeRadius > 0 then ally.explodeRadius else ally.ramRadius
-			local single = ally.explodeRadius <= 0
-			for _, enemy in active do
-				local d = (enemy.primary.Position - ally.primary.Position).Magnitude
-				if not enemy.dead and d <= blast then
-					EnemyService.takeDamage(enemy, ally.damage)
-					if single then
+			if ally.chainCount > 0 then
+				-- STORM pin: lightning leaps from enemy to nearest enemy, chaining
+				local hit: { [Enemy]: boolean } = {}
+				local fromPos = ally.primary.Position
+				for _ = 1, ally.chainCount do
+					local best: Enemy? = nil
+					local bestD = 18 -- how far the bolt can jump
+					for _, enemy in active do
+						if not enemy.dead and not hit[enemy] then
+							local d = (enemy.primary.Position - fromPos).Magnitude
+							if d <= bestD then
+								bestD = d
+								best = enemy
+							end
+						end
+					end
+					if not best then
+						break
+					end
+					local toPos = best.primary.Position -- grab before it might die
+					beam(fromPos, toPos, ally.color)
+					EnemyService.takeDamage(best, ally.damage)
+					hit[best] = true
+					fromPos = toPos
+				end
+				deathPop(ally.primary.Position, ally.color)
+			elseif ally.explodeRadius > 0 then
+				-- MEGA / rocket pin: AoE blast hitting every enemy in range
+				for _, enemy in active do
+					local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+					if not enemy.dead and d <= ally.explodeRadius then
+						EnemyService.takeDamage(enemy, ally.damage)
+					end
+				end
+				bigBoom(ally.primary.Position, ally.color, ally.explodeRadius)
+			else
+				-- normal pin: hit the single enemy it touched
+				for _, enemy in active do
+					local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+					if not enemy.dead and d <= ally.ramRadius then
+						EnemyService.takeDamage(enemy, ally.damage)
 						break
 					end
 				end
-			end
-			if ally.explodeRadius > 0 then
-				bigBoom(ally.primary.Position, ally.color, ally.explodeRadius)
-			else
 				deathPop(ally.primary.Position, ally.color)
 			end
 			ally.model:Destroy()
