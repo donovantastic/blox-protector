@@ -325,11 +325,8 @@ end
 local function fire(tower: Tower, target: EnemyService.Enemy)
 	local muzzle = tower.turret.Position
 		+ tower.turret.CFrame.LookVector * (tower.turret.Size.Z / 2)
-	tracer(
-		muzzle,
-		target.primary.Position,
-		GRAYBOX[tower.towerType] or Color3.fromRGB(255, 255, 255)
-	)
+	local targetPos = target.primary.Position -- grab before it might die
+	tracer(muzzle, targetPos, GRAYBOX[tower.towerType] or Color3.fromRGB(255, 255, 255))
 	local killed = EnemyService.takeDamage(target, level(tower).damage)
 	-- if this tower's shot carries a debuff (paint = slow), splatter the enemy —
 	-- but only if it's still alive (no point painting something we just destroyed)
@@ -340,6 +337,10 @@ local function fire(tower: Tower, target: EnemyService.Enemy)
 	-- superball: bounce the enemy back down the path (skip if we just killed it)
 	if tower.def.knockback and not killed then
 		EnemyService.knockback(target, tower.def.knockback)
+	end
+	-- the Dev Drill spawns a friendly DRILL pin on each kill — it bores through the rest
+	if killed and tower.towerType == "Drill" then
+		EnemyService.spawnDrillPin(level(tower).damage, targetPos)
 	end
 end
 

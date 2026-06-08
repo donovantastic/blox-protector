@@ -52,6 +52,8 @@ type Ally = {
 	maxLimbs: number, -- limb-shooter pin: starting limb count (for the slowdown math)
 	spawnOnDeath: number, -- trojan pin: how many mini pins it bursts into on impact (0 = none)
 	floatHeight: number, -- floater pin: studs it hovers above the track (0 = rolls on the ground)
+	drillDamage: number, -- drill pin: damage per tick as it bores THROUGH enemies (0 = not a drill)
+	drillCooldown: number, -- drill pin: seconds until its next drill tick
 }
 
 local EnemyService = {}
@@ -92,7 +94,7 @@ local function buildPinEnemy(
 	modelName: string,
 	scale: number?,
 	bodyColor: Color3?,
-	attachment: string? -- nil | "gun" | "rockets" | "storm" — extra gear for special pins
+	attachment: string? -- nil | "gun" | "rockets" | "storm" | "drill" — extra gear for special pins
 ): (Model, BasePart)
 	local RED = bodyColor or Color3.fromRGB(225, 35, 35) -- enemies red; friendly allies pass blue
 	local BLACK = Color3.fromRGB(20, 20, 22)
@@ -330,6 +332,24 @@ local function buildPinEnemy(
 				Enum.Material.Neon,
 				Enum.PartType.Ball
 			)
+		end
+	elseif attachment == "drill" then
+		-- a big drill cone on the FRONT (-Z, the way it travels): stacked discs that
+		-- shrink toward the tip, like the Dev Drill but laid on its side
+		local METAL = Color3.fromRGB(170, 180, 195)
+		local TIP = Color3.fromRGB(232, 236, 245)
+		local dRadii = { 0.7, 0.55, 0.4, 0.25, 0.12 }
+		local z = -0.9 -- start just in front of the body
+		for i, r in dRadii do
+			piece(
+				"DrillBit" .. i,
+				Vector3.new(0.42, r * 2, r * 2),
+				CFrame.new(0, 0.3, z) * CFrame.Angles(0, math.rad(90), 0), -- lay it pointing -Z
+				METAL:Lerp(TIP, (i - 1) / #dRadii * 0.6),
+				Enum.Material.Metal,
+				Enum.PartType.Cylinder
+			)
+			z -= 0.42
 		end
 	end
 
@@ -842,6 +862,54 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		maxLimbs = maxLimbs,
 		spawnOnDeath = spawnOnDeath,
 		floatHeight = floatHeight,
+		drillDamage = 0,
+		drillCooldown = 0,
+	}
+	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
+	model.Parent = container
+	table.insert(allies, ally)
+end
+
+-- Spawn a green DRILL pin near `position` (the Dev Drill tower spawns one on every
+-- kill). It bores THROUGH enemies — damaging everything it touches without being
+-- consumed — all the way to the enemy spawn.
+function EnemyService.spawnDrillPin(damage: number, position: Vector3)
+	local path = Map.getPath()
+	if #path < 2 then
+		return
+	end
+	local startIdx = 1
+	local bestD = math.huge
+	for i, wp in path do
+		local d = (wp - position).Magnitude
+		if d < bestD then
+			bestD = d
+			startIdx = i
+		end
+	end
+	local color = Color3.fromRGB(60, 200, 90) -- drill green
+	local model, primary = buildPinEnemy("DrillPin", 0.85, color, "drill")
+	local ally: Ally = {
+		model = model,
+		primary = primary,
+		waypointIndex = startIdx - 1,
+		speed = ALLY_SPEED * 1.3,
+		damage = damage,
+		dead = false,
+		color = color,
+		ramRadius = ALLY_RAM_RADIUS,
+		explodeRadius = 0,
+		shootRange = 0,
+		shootDamage = 0,
+		shootCooldown = 0,
+		windup = false,
+		chainCount = 0,
+		limbs = 0,
+		maxLimbs = 0,
+		spawnOnDeath = 0,
+		floatHeight = 0,
+		drillDamage = damage, -- bores through everything it touches
+		drillCooldown = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -957,6 +1025,8 @@ local function spawnMiniPin(damage: number, position: Vector3)
 		maxLimbs = 0,
 		spawnOnDeath = 0, -- minis never burst (no infinite spawn)
 		floatHeight = 0,
+		drillDamage = 0,
+		drillCooldown = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -1012,9 +1082,25 @@ local function stepAllies(dt: number)
 			end
 		end
 
-		-- did we bump an enemy? (a slingshot pin doesn't attack while winding backward)
+		-- drill pins bore THROUGH enemies: rapidly damage everything they touch and keep
+		-- going (they're never "used up" on contact; they run to the spawn and stop there)
+		if ally.drillDamage > 0 then
+			ally.drillCooldown -= dt
+			if ally.drillCooldown <= 0 then
+				for _, enemy in active do
+					local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+					if not enemy.dead and d <= ally.ramRadius then
+						EnemyService.takeDamage(enemy, ally.drillDamage)
+					end
+				end
+				ally.drillCooldown = 0.15
+			end
+		end
+
+		-- did we bump an enemy? (a slingshot pin doesn't attack while winding backward;
+		-- a drill pin pierces instead of ramming, so it skips this too)
 		local rammed = false
-		if not ally.windup then
+		if not ally.windup and ally.drillDamage <= 0 then
 			for _, enemy in active do
 				local d = (enemy.primary.Position - ally.primary.Position).Magnitude
 				if not enemy.dead and d <= ally.ramRadius then
