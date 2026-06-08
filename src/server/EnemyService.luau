@@ -60,6 +60,7 @@ export type Ally = {
 	trailCooldown: number, -- trail pin: seconds until it drops the next trail blob
 	stunDuration: number, -- stunner pin: seconds it freezes enemies on impact (0 = no stun)
 	stunRadius: number, -- stunner pin: area of the stun
+	lives: number, -- kitty pin: pounces left before it despawns (0 = not a kitty / used up)
 }
 
 -- A glowing blob a trail pin leaves behind: it speeds up friendly pins that pass
@@ -115,7 +116,7 @@ local function buildPinEnemy(
 	modelName: string,
 	scale: number?,
 	bodyColor: Color3?,
-	attachment: string? -- nil | "gun" | "rockets" | "storm" | "drill" | "medic" — special-pin gear
+	attachment: string? -- nil | "gun" | "rockets" | "storm" | "drill" | "medic" | "kitty" — gear
 ): (Model, BasePart)
 	local RED = bodyColor or Color3.fromRGB(225, 35, 35) -- enemies red; friendly allies pass blue
 	local BLACK = Color3.fromRGB(20, 20, 22)
@@ -395,6 +396,49 @@ local function buildPinEnemy(
 			Vector3.new(0.8, 0.28, 0.12),
 			CFrame.new(0, 0.35, 1.36),
 			REDX,
+			Enum.Material.SmoothPlastic
+		)
+	elseif attachment == "kitty" then
+		-- cat ears (diamond blocks → triangle tips), whiskers, and a curvy tail
+		local PINK = Color3.fromRGB(255, 150, 180)
+		local DARK = Color3.fromRGB(30, 30, 35)
+		for _, side in { -1, 1 } do
+			piece(
+				"Ear",
+				Vector3.new(0.55, 0.55, 0.3),
+				CFrame.new(side * 0.62, 1.95, 0) * CFrame.Angles(0, 0, math.rad(45)),
+				RED,
+				Enum.Material.SmoothPlastic
+			)
+			piece(
+				"EarIn",
+				Vector3.new(0.3, 0.3, 0.12),
+				CFrame.new(side * 0.62, 1.95, -0.16) * CFrame.Angles(0, 0, math.rad(45)),
+				PINK,
+				Enum.Material.SmoothPlastic
+			)
+			for _, wy in { 0.05, -0.1, -0.25 } do -- three whiskers per cheek
+				piece(
+					"Whisker",
+					Vector3.new(0.85, 0.04, 0.04),
+					CFrame.new(side * 0.9, wy, -0.78),
+					DARK,
+					Enum.Material.SmoothPlastic
+				)
+			end
+		end
+		piece(
+			"Tail1",
+			Vector3.new(0.22, 1.1, 0.22),
+			CFrame.new(0, 0.3, 1.25) * CFrame.Angles(math.rad(-35), 0, 0),
+			RED,
+			Enum.Material.SmoothPlastic
+		)
+		piece(
+			"Tail2",
+			Vector3.new(0.2, 0.9, 0.2),
+			CFrame.new(0, 1.15, 1.6) * CFrame.Angles(math.rad(-70), 0, 0),
+			RED,
 			Enum.Material.SmoothPlastic
 		)
 	end
@@ -807,8 +851,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	--   [0.21,0.26) -> medic     (5%)  medkit pin: un-stuns towers it passes (no ram)
 	--   [0.26,0.30) -> trail     (4%)  lays a glowing trail: speeds up pins + burns enemies
 	--   [0.30,0.34) -> stunner   (4%)  freezes every enemy in the area on impact
-	--   [0.34,0.44) -> rocket    (10%, max only)  high damage + speed, explodes
-	--   [0.44,0.69) -> shooter   (25%, max only)  carries a gun and fires as it advances
+	--   [0.34,0.38) -> kitty     (4%)  nine lives: pounces nine enemies before it dies
+	--   [0.38,0.48) -> rocket    (10%, max only)  high damage + speed, explodes
+	--   [0.48,0.73) -> shooter   (25%, max only)  carries a gun and fires as it advances
 	local roll = math.random()
 	local mega = roll < 0.01
 	local slingshot = not mega and roll < 0.06
@@ -845,6 +890,16 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not medic
 		and not trail
 		and roll < 0.34
+	local kitty = not mega
+		and not slingshot
+		and not storm
+		and not classic
+		and not trojan
+		and not floater
+		and not medic
+		and not trail
+		and not stunner
+		and roll < 0.38
 	local rocket = maxLevel
 		and not mega
 		and not slingshot
@@ -855,7 +910,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not medic
 		and not trail
 		and not stunner
-		and roll < 0.44
+		and not kitty
+		and roll < 0.48
 	local shooter = maxLevel
 		and not mega
 		and not slingshot
@@ -866,8 +922,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not medic
 		and not trail
 		and not stunner
+		and not kitty
 		and not rocket
-		and roll < 0.69
+		and roll < 0.73
 
 	-- defaults: a plain random-color pin heading straight for the enemy spawn
 	local scale = 0.9
@@ -887,6 +944,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local floatHeight = 0
 	local stunDuration = 0
 	local stunRadius = 0
+	local lives = 0
 	local startWaypoint = startIdx - 1 -- normal pins head toward the spawn (path[1])
 
 	if mega then
@@ -927,6 +985,10 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		color = Color3.fromRGB(255, 235, 90) -- electric yellow
 		stunDuration = 2 -- freezes enemies for 2s
 		stunRadius = ALLY_RAM_RADIUS * 2
+	elseif kitty then
+		color = Color3.fromRGB(255, 170, 80) -- orange tabby
+		attach = "kitty" -- ears, whiskers, a tail
+		lives = 9 -- nine lives: pounces nine enemies before it's gone
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
 		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
@@ -971,6 +1033,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		trailCooldown = 0,
 		stunDuration = stunDuration,
 		stunRadius = stunRadius,
+		lives = lives,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -1022,6 +1085,7 @@ function EnemyService.spawnDrillPin(damage: number, position: Vector3)
 		trailCooldown = 0,
 		stunDuration = 0,
 		stunRadius = 0,
+		lives = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -1144,6 +1208,7 @@ local function spawnMiniPin(damage: number, position: Vector3)
 		trailCooldown = 0,
 		stunDuration = 0,
 		stunRadius = 0,
+		lives = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -1286,10 +1351,39 @@ local function stepAllies(dt: number)
 			end
 		end
 
-		-- did we bump an enemy? (slingshot pins don't attack while winding; drill pins
-		-- pierce instead of ramming; medics are non-combat support — all skip this)
+		-- kitty pin: NINE LIVES. It pounces an enemy it touches (one life per pounce, on
+		-- a cooldown) and only despawns once all nine lives are used up.
+		if ally.lives > 0 then
+			ally.drillCooldown -= dt -- reused as the pounce timer (kitties don't drill)
+			if ally.drillCooldown <= 0 then
+				for _, enemy in active do
+					local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+					if not enemy.dead and d <= ally.ramRadius then
+						EnemyService.takeDamage(enemy, ally.damage)
+						deathPop(ally.primary.Position, ally.color)
+						ally.lives -= 1
+						ally.drillCooldown = 0.35
+						break
+					end
+				end
+				if ally.lives <= 0 then
+					ally.model:Destroy()
+					table.remove(allies, i)
+					continue
+				end
+			end
+		end
+
+		-- did we bump an enemy? (slingshot pins don't attack while winding; drill/kitty
+		-- pins handle their own hits; medics are non-combat support — all skip this)
 		local rammed = false
-		if not ally.windup and ally.drillDamage <= 0 and not ally.medic and not ally.trail then
+		if
+			not ally.windup
+			and ally.drillDamage <= 0
+			and not ally.medic
+			and not ally.trail
+			and ally.lives <= 0
+		then
 			for _, enemy in active do
 				local d = (enemy.primary.Position - ally.primary.Position).Magnitude
 				if not enemy.dead and d <= ally.ramRadius then
