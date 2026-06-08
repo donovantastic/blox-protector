@@ -17,6 +17,7 @@ local EVENTS = {
 	-- client -> server
 	"PlaceTower",
 	"UpgradeTower",
+	"UpgradeAllTowers", -- () upgrade every placed tower one level, paying full cost
 	"SellTower",
 	"DialogueDone", -- () client finished the intro sequence; server may start waves
 	"RequestState", -- () client HUD is ready; server replies with a state snapshot
@@ -28,6 +29,7 @@ local EVENTS = {
 	"CoinsChanged", -- (coins: number) server -> client: current coin total
 	"TowerUnlocked", -- (towerType: string) server -> client: tower now placeable
 	"GatePoweredOn", -- (position: Vector3) server -> client: cut the camera to this gate
+	"DevCommand", -- (action: string, value: any?) dev panel: money/skipWave/unlockAll/etc.
 }
 
 local Remotes = {}

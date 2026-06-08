@@ -30,6 +30,7 @@ local EXPLICIT: { Wave } = {
 	{
 		{ enemyType = "Brute", count = 2, spacing = 1.5, healthMult = 1 },
 		{ enemyType = "Grunt", count = 10, spacing = 0.5, healthMult = 1.2 },
+		{ enemyType = "Pin", count = 1, spacing = 1.1, healthMult = 1 }, -- one big elite
 	},
 }
 
@@ -55,6 +56,14 @@ local function generate(waveNumber: number): Wave
 			wave,
 			{ enemyType = "Runner", count = 3 + over, spacing = 0.4, healthMult = healthMult }
 		)
+	end
+	if waveNumber % 4 == 0 then
+		table.insert(wave, {
+			enemyType = "Pin",
+			count = 1 + math.floor(over / 5), -- a lone elite, a couple in the late game
+			spacing = 1.5,
+			healthMult = healthMult,
+		})
 	end
 	return wave
 end

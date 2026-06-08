@@ -24,6 +24,7 @@ local CardService = require(script.CardService)
 local CoinService = require(script.CoinService)
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared").Remotes)
+local Towers = require(ReplicatedStorage:WaitForChild("Shared").Configs.Towers)
 local notify = Remotes.event("Notify")
 
 local SWORD_PRICE = 100
@@ -179,6 +180,7 @@ ModeService.onChange = function(mode)
 		GameState.reset()
 		Economy.init()
 		TowerService.reset()
+		EnemyService.reset() -- clear leftover enemies + friendly pins from the last round
 		teleportAll(CFrame.new(0, 6, 55))
 		WaveManager.start(act, act == 2)
 	end
@@ -259,11 +261,44 @@ Remotes.event("UpgradeTower").OnServerEvent:Connect(function(player, towerId)
 	end
 	report(player, TowerService.upgrade(player, towerId))
 end)
+Remotes.event("UpgradeAllTowers").OnServerEvent:Connect(function(player)
+	report(player, TowerService.upgradeAll(player))
+end)
 Remotes.event("SellTower").OnServerEvent:Connect(function(player, towerId)
 	if typeof(towerId) ~= "number" then
 		return
 	end
 	report(player, TowerService.sell(player, towerId))
+end)
+
+-- Dev/admin panel commands (testing tool). Server-authoritative like everything else.
+Remotes.event("DevCommand").OnServerEvent:Connect(function(player, action, value)
+	if typeof(action) ~= "string" then
+		return
+	end
+	if action == "money" then
+		local amount = if typeof(value) == "number" then value else 1000
+		Economy.add(amount)
+		GameState.broadcast()
+		notify:FireClient(player, ("Dev: +$%d"):format(amount))
+	elseif action == "skipWave" then
+		WaveManager.skipWave()
+		notify:FireClient(player, "Dev: skipped the wave")
+	elseif action == "unlockAll" then
+		for towerType in Towers do
+			TowerService.unlock(towerType)
+			Remotes.event("TowerUnlocked"):FireAllClients(towerType)
+		end
+		notify:FireClient(player, "Dev: all towers unlocked")
+	elseif action == "healBase" then
+		GameState.healBase(9999) -- caps at max
+		notify:FireClient(player, "Dev: base fully healed")
+	elseif action == "clearEnemies" then
+		EnemyService.clearEnemies()
+		notify:FireClient(player, "Dev: cleared the enemies")
+	elseif action == "win" then
+		GameState.win()
+	end
 end)
 Remotes.event("DialogueDone").OnServerEvent:Connect(function()
 	WaveManager.markIntroDone()

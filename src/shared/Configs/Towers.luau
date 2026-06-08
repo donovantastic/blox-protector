@@ -15,6 +15,14 @@ export type Level = {
 	cost: number, -- cost to reach THIS level (level 1 = placement cost)
 }
 
+-- A debuff a tower's shot leaves on the enemy it hits. Right now there's one kind:
+-- a SLOW (paint gums the enemy up). slowMult is how fast it moves while painted
+-- (0.5 = half speed); duration is how many seconds the paint lasts before it wears off.
+export type Debuff = {
+	slowMult: number, -- speed multiplier while painted (1 = no slow, 0.5 = half speed)
+	duration: number, -- seconds the slow lasts after a hit
+}
+
 export type Tower = {
 	name: string, -- lore display name
 	desc: string, -- one-line flavor
@@ -24,6 +32,15 @@ export type Tower = {
 	fireRate: number, -- shots per second
 	targeting: string, -- "first" | "last" | "closest" | "strongest"
 	levels: { Level }, -- index = upgrade level (1 = base)
+	debuff: Debuff?, -- optional: a status effect each shot applies (e.g. paint = slow)
+	knockback: number?, -- optional: studs to bounce the enemy BACKWARD along the path
+	-- optional: a "wall" tower is placed ON the path instead of beside it, and instead
+	-- of shooting one enemy it damages EVERY enemy inside its `range` each tick (so
+	-- enemies take damage as they pass through). `damage` = per tick, `fireRate` = ticks/sec.
+	wall: boolean?,
+	-- optional: a "summon" tower spawns friendly pins that charge UP the lane and ram
+	-- enemies. `fireRate` = pins per second, `damage` = the ram damage of each pin.
+	summon: boolean?,
 }
 
 local Towers: { [string]: Tower } = {
@@ -69,6 +86,94 @@ local Towers: { [string]: Tower } = {
 			{ range = 14, damage = 7, cost = 80 },
 			{ range = 18, damage = 10, cost = 130 },
 			{ range = 22, damage = 16, cost = 240 },
+		},
+	},
+
+	Paintball = {
+		name = "Paint Splatterer",
+		desc = "Fires gloppy 1x1 paintballs. Low damage, but the splatter gums enemies up so they crawl.",
+		model = "Paintball",
+		cost = 60,
+		placementRadius = 4,
+		fireRate = 1.1, -- a steady stream of paint
+		targeting = "first",
+		-- Soft hits, but the SLOW is the point: a single Splatterer can keep one enemy
+		-- gummed up the whole time (fires every ~0.9s, paint lasts 1.6s → never wears off
+		-- while it keeps shooting). Pair it with a hard-hitting tower behind it.
+		debuff = { slowMult = 0.55, duration = 1.6 }, -- 55% speed for 1.6s after each hit
+		levels = {
+			{ range = 16, damage = 4, cost = 60 },
+			{ range = 20, damage = 6, cost = 90 },
+			{ range = 24, damage = 10, cost = 150 },
+		},
+	},
+
+	Superball = {
+		name = "Super Bouncer",
+		desc = "Fires a hyper-bouncy rubber ball that smacks enemies backward down the path.",
+		model = "Superball",
+		cost = 75,
+		placementRadius = 4,
+		fireRate = 0.9, -- slowish, but every hit sends them flying back
+		targeting = "first", -- hit the leader and bowl it back into the crowd
+		-- Light damage — the KNOCKBACK is the weapon. 8 studs back per hit roughly
+		-- cancels a normal enemy's progress between shots, and outright bullies slow
+		-- heavy enemies (a Mesh-Tank can get stuck bouncing in place). Tweak freely.
+		knockback = 8, -- studs pushed back along the path each shot
+		levels = {
+			{ range = 18, damage = 5, cost = 75 },
+			{ range = 22, damage = 8, cost = 120 },
+			{ range = 26, damage = 14, cost = 200 },
+		},
+	},
+
+	Drill = {
+		name = "Dev Drill",
+		desc = "A developer's industrial drill. Short reach, but it bores through even the toughest corruption at a blistering rate.",
+		model = "Drill",
+		cost = 150,
+		placementRadius = 4,
+		fireRate = 3.0, -- BRRRR — fires ~3x a second, the fastest tower in the game
+		targeting = "strongest", -- bores into the toughest enemy in range (great vs bosses)
+		-- No gimmick — this one is pure damage. Fast fire rate x solid hits = by far
+		-- the highest damage-per-second we have (~54 -> 126 DPS). Short range is the
+		-- price: you have to place it right on top of the action.
+		levels = {
+			{ range = 12, damage = 18, cost = 150 },
+			{ range = 14, damage = 28, cost = 230 },
+			{ range = 16, damage = 42, cost = 380 },
+		},
+	},
+
+	Trowel = {
+		name = "Brick Layer",
+		desc = "Slaps a brick wall right across the lane. Enemies don't stop — they grind through it and get chewed up.",
+		model = "Trowel",
+		cost = 90,
+		placementRadius = 3,
+		fireRate = 4, -- damage "ticks" per second while an enemy is inside the wall
+		targeting = "first", -- unused for walls (it hits everything in range), but required
+		wall = true, -- placed ON the path; damages every enemy in `range` each tick
+		levels = {
+			{ range = 6, damage = 4, cost = 90 },
+			{ range = 7, damage = 7, cost = 140 },
+			{ range = 8, damage = 12, cost = 230 },
+		},
+	},
+
+	Summoner = {
+		name = "Pin Factory",
+		desc = "Stamps out friendly blue push-pins that charge UP the lane and kamikaze-ram the corruption.",
+		model = "Summoner",
+		cost = 120,
+		placementRadius = 4,
+		fireRate = 0.5, -- one friendly pin every 2 seconds
+		targeting = "first", -- unused for summoners, but required
+		summon = true, -- spawns friendly pins instead of shooting
+		levels = {
+			{ range = 0, damage = 30, cost = 120 }, -- damage = each pin's ram hit
+			{ range = 0, damage = 50, cost = 190 },
+			{ range = 0, damage = 85, cost = 320 },
 		},
 	},
 

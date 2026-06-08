@@ -18,6 +18,7 @@ local WaveManager = {}
 local BREATHER = 4 -- seconds between waves
 
 local introDone = false
+local skipRequested = false -- dev panel: skip the current wave
 local playDialogue = Remotes.event("PlayDialogue")
 local showCard = Remotes.event("ShowCard")
 local notify = Remotes.event("Notify") -- mid-wave beats use the NON-blocking toast
@@ -35,6 +36,7 @@ local function playing(): boolean
 end
 
 local function runWave(waveNumber: number)
+	skipRequested = false
 	local def = Waves.get(waveNumber)
 
 	local spawnsRemaining = 0
@@ -45,7 +47,7 @@ local function runWave(waveNumber: number)
 	for _, group in def do
 		task.spawn(function()
 			for _ = 1, group.count do
-				if not playing() then
+				if not playing() or skipRequested then
 					return
 				end
 				EnemyService.spawn(group.enemyType, group.healthMult)
@@ -55,9 +57,19 @@ local function runWave(waveNumber: number)
 		end)
 	end
 
-	while playing() and (spawnsRemaining > 0 or #EnemyService.getActive() > 0) do
+	while
+		playing()
+		and not skipRequested
+		and (spawnsRemaining > 0 or #EnemyService.getActive() > 0)
+	do
 		task.wait(0.4)
 	end
+end
+
+-- Dev panel: stop spawning the rest of this wave + clear the enemies on the field.
+function WaveManager.skipWave()
+	skipRequested = true
+	EnemyService.clearEnemies()
 end
 
 local function waitForIntro()
