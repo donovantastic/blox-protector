@@ -48,6 +48,8 @@ type Ally = {
 	shootCooldown: number, -- shooter pin: seconds left until it can shoot again
 	windup: boolean, -- slingshot pin: true while rolling BACKWARD before it launches forward
 	chainCount: number, -- storm pin: number of chain-lightning jumps on impact (0 = none)
+	pinDuration: number, -- classic pin: seconds it roots enemies in place (0 = not a pinner)
+	pinRadius: number, -- classic pin: area of the pin effect
 }
 
 local EnemyService = {}
@@ -337,6 +339,145 @@ local function buildPinEnemy(
 	return model, body
 end
 
+-- The classic angry "Pin" (BFDI-style): same red spool body, but with a gritted-
+-- teeth scowl, a long thin needle on top, and little arms — no tank gear at all.
+local function buildClassicPin(modelName: string, scale: number?): (Model, BasePart)
+	local RED = Color3.fromRGB(230, 30, 30)
+	local BLACK = Color3.fromRGB(20, 20, 22)
+	local WHITE = Color3.fromRGB(245, 245, 250)
+	local STEEL = Color3.fromRGB(190, 198, 210)
+	local model = Instance.new("Model")
+	model.Name = modelName
+
+	local function piece(
+		name: string,
+		size: Vector3,
+		cframe: CFrame,
+		color: Color3,
+		material: Enum.Material,
+		shape: Enum.PartType?
+	): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.Size = size
+		p.CFrame = cframe
+		p.Color = color
+		p.Material = material
+		if shape then
+			p.Shape = shape
+		end
+		p.Parent = model
+		return p
+	end
+
+	-- red spool body
+	local body = piece(
+		"Body",
+		Vector3.new(2.3, 3.4, 1.5),
+		CFrame.new(0, 0, 0),
+		RED,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"Collar",
+		Vector3.new(2.9, 0.55, 1.85),
+		CFrame.new(0, 1.45, 0),
+		RED,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"Skirt",
+		Vector3.new(3.1, 0.8, 2.0),
+		CFrame.new(0, -1.3, 0),
+		RED,
+		Enum.Material.SmoothPlastic
+	)
+
+	-- angry face: eyes, brows slanting DOWN toward the middle, gritted teeth
+	local FZ = -0.78
+	piece(
+		"EyeL",
+		Vector3.new(0.34, 0.44, 0.12),
+		CFrame.new(-0.5, 0.55, FZ),
+		BLACK,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"EyeR",
+		Vector3.new(0.34, 0.44, 0.12),
+		CFrame.new(0.5, 0.55, FZ),
+		BLACK,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"BrowL",
+		Vector3.new(0.56, 0.15, 0.12),
+		CFrame.new(-0.5, 0.95, FZ) * CFrame.Angles(0, 0, math.rad(22)),
+		BLACK,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"BrowR",
+		Vector3.new(0.56, 0.15, 0.12),
+		CFrame.new(0.5, 0.95, FZ) * CFrame.Angles(0, 0, math.rad(-22)),
+		BLACK,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"Mouth",
+		Vector3.new(1.12, 0.56, 0.1),
+		CFrame.new(0, -0.25, FZ + 0.02),
+		BLACK,
+		Enum.Material.SmoothPlastic
+	)
+	piece(
+		"Teeth",
+		Vector3.new(1.0, 0.46, 0.12),
+		CFrame.new(0, -0.25, FZ),
+		WHITE,
+		Enum.Material.SmoothPlastic
+	)
+	for _, gx in { -0.33, 0, 0.33 } do
+		piece(
+			"Grit",
+			Vector3.new(0.07, 0.46, 0.14),
+			CFrame.new(gx, -0.25, FZ - 0.01),
+			BLACK,
+			Enum.Material.SmoothPlastic
+		)
+	end
+
+	-- a long thin needle on top
+	piece("Needle", Vector3.new(0.16, 2.6, 0.16), CFrame.new(0, 3.0, 0), STEEL, Enum.Material.Metal)
+
+	-- two little arms with white-glove hands
+	for _, side in { -1, 1 } do
+		piece(
+			"Arm",
+			Vector3.new(0.22, 1.3, 0.22),
+			CFrame.new(side * 1.3, -0.2, -0.1) * CFrame.Angles(0, 0, math.rad(side * 30)),
+			RED,
+			Enum.Material.SmoothPlastic
+		)
+		piece(
+			"Hand",
+			Vector3.new(0.55, 0.55, 0.55),
+			CFrame.new(side * 1.85, -0.8, -0.1),
+			WHITE,
+			Enum.Material.SmoothPlastic,
+			Enum.PartType.Ball
+		)
+	end
+
+	model.PrimaryPart = body
+	if scale then
+		model:ScaleTo(scale)
+	end
+	return model, body
+end
+
 local function buildModel(def: Enemies.Enemy): (Model, BasePart)
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	local enemiesFolder = assets and assets:FindFirstChild("Enemies")
@@ -585,24 +726,32 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		end
 	end
 
-	-- Roll the variant from one random number. Mega + slingshot + storm can happen at
-	-- any level; shooter and rocket only appear once the factory is maxed out.
+	-- Roll the variant from one random number. mega/slingshot/storm/classic can happen
+	-- at any level; shooter and rocket only appear once the factory is maxed out.
 	--   [0, 0.01)   -> mega      (1%)
 	--   [0.01,0.06) -> slingshot (5%)  winds backward, then launches forward for 2x
 	--   [0.06,0.10) -> storm     (4%)  chain-lightning zaps a string of enemies
-	--   [0.10,0.20) -> rocket    (10%, max only)  high damage + speed, explodes
-	--   [0.20,0.45) -> shooter   (25%, max only)  carries a gun and fires as it advances
+	--   [0.10,0.13) -> classic   (3%)  angry Pin: roots enemies in place ("pins" them)
+	--   [0.13,0.23) -> rocket    (10%, max only)  high damage + speed, explodes
+	--   [0.23,0.48) -> shooter   (25%, max only)  carries a gun and fires as it advances
 	local roll = math.random()
 	local mega = roll < 0.01
 	local slingshot = not mega and roll < 0.06
 	local storm = not mega and not slingshot and roll < 0.10
-	local rocket = maxLevel and not mega and not slingshot and not storm and roll < 0.20
+	local classic = not mega and not slingshot and not storm and roll < 0.13
+	local rocket = maxLevel
+		and not mega
+		and not slingshot
+		and not storm
+		and not classic
+		and roll < 0.23
 	local shooter = maxLevel
 		and not mega
 		and not slingshot
 		and not storm
+		and not classic
 		and not rocket
-		and roll < 0.45
+		and roll < 0.48
 
 	-- defaults: a plain random-color pin heading straight for the enemy spawn
 	local scale = 0.9
@@ -616,6 +765,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local shootDmg = 0
 	local windup = false
 	local chainCount = 0
+	local pinDuration = 0
+	local pinRadius = 0
 	local startWaypoint = startIdx - 1 -- normal pins head toward the spawn (path[1])
 
 	if mega then
@@ -632,6 +783,10 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		color = Color3.fromRGB(80, 220, 255) -- electric cyan
 		attach = "storm" -- glowing tesla rig so it's unmistakable
 		chainCount = 6 -- lightning leaps to up to 6 enemies on impact
+	elseif classic then
+		color = Color3.fromRGB(230, 30, 30) -- bright angry red
+		pinDuration = 2.5 -- roots every enemy in the area for 2.5s
+		pinRadius = ALLY_RAM_RADIUS * 2
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
 		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
@@ -643,7 +798,13 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		shootRange, shootDmg = 22, damage -- shoots enemies as it rolls in
 	end
 
-	local model, primary = buildPinEnemy("AllyPin", scale, color, attach)
+	local model: Model
+	local primary: BasePart
+	if classic then
+		model, primary = buildClassicPin("AllyPin", scale)
+	else
+		model, primary = buildPinEnemy("AllyPin", scale, color, attach)
+	end
 	local ally: Ally = {
 		model = model,
 		primary = primary,
@@ -659,6 +820,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		shootCooldown = 0,
 		windup = windup,
 		chainCount = chainCount,
+		pinDuration = pinDuration,
+		pinRadius = pinRadius,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -754,7 +917,17 @@ local function stepAllies(dt: number)
 			end
 		end
 		if rammed then
-			if ally.chainCount > 0 then
+			if ally.pinDuration > 0 then
+				-- CLASSIC pin: PIN every enemy in the area in place (speed 0) + damage
+				for _, enemy in active do
+					local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+					if not enemy.dead and d <= ally.pinRadius then
+						EnemyService.applySlow(enemy, 0, ally.pinDuration) -- rooted
+						EnemyService.takeDamage(enemy, ally.damage)
+					end
+				end
+				bigBoom(ally.primary.Position, ally.color, ally.pinRadius)
+			elseif ally.chainCount > 0 then
 				-- STORM pin: lightning leaps from enemy to nearest enemy, chaining
 				local hit: { [Enemy]: boolean } = {}
 				local fromPos = ally.primary.Position
