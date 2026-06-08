@@ -29,6 +29,7 @@ export type Enemy = {
 	slowUntil: number, -- os.clock() time the paint wears off (0 = not painted)
 	baseColor: Color3, -- the enemy's normal color, so we can restore it after the paint fades
 	abilityCooldown: number, -- seconds left before this enemy can use its drill ability again
+	stunnedUntil: number, -- os.clock() time a stun wears off (0 = not stunned); frozen + yellow
 }
 
 -- A friendly pin summoned by the Pin Factory tower: walks the track the WRONG way
@@ -57,6 +58,8 @@ export type Ally = {
 	medic: boolean, -- medic pin: clears the stun off towers it passes (and doesn't ram)
 	trail: boolean, -- trail pin: lays a glowing trail that boosts pins + burns enemies
 	trailCooldown: number, -- trail pin: seconds until it drops the next trail blob
+	stunDuration: number, -- stunner pin: seconds it freezes enemies on impact (0 = no stun)
+	stunRadius: number, -- stunner pin: area of the stun
 }
 
 -- A glowing blob a trail pin leaves behind: it speeds up friendly pins that pass
@@ -94,6 +97,7 @@ local TRAIL_BOOST = 1.6 -- how much faster pins move inside a trail
 -- The pink an enemy turns while it's covered in paint (mixed with its own color so
 -- you can still tell enemies apart). Purely visual — it's how you SEE the slow working.
 local PAINT_COLOR = Color3.fromRGB(255, 95, 200)
+local STUN_COLOR = Color3.fromRGB(255, 235, 90) -- enemies flash yellow while stunned
 
 local GRAYBOX_COLORS: { [string]: Color3 } = {
 	Grunt = Color3.fromRGB(200, 80, 80),
@@ -665,6 +669,7 @@ function EnemyService.spawn(enemyType: string, healthMult: number): Enemy?
 		baseColor = primary.Color,
 		-- wait one full cooldown before the first drill (a brief grace period)
 		abilityCooldown = if def.ability then def.ability.cooldown else 0,
+		stunnedUntil = 0,
 	}
 	enemy.bar = buildHealthBar(primary)
 	table.insert(active, enemy)
@@ -723,6 +728,14 @@ function EnemyService.applySlow(enemy: Enemy, mult: number, duration: number)
 	end
 	enemy.slowMult = mult
 	enemy.slowUntil = os.clock() + duration
+end
+
+-- Stun ONE enemy: it freezes in place (and flashes yellow) for `duration` seconds.
+function EnemyService.stunEnemy(enemy: Enemy, duration: number)
+	if enemy.dead then
+		return
+	end
+	enemy.stunnedUntil = os.clock() + duration
 end
 
 -- Bounce ONE enemy `studs` BACKWARD along the path (the Superball tower). We don't
@@ -793,8 +806,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	--   [0.17,0.21) -> floater   (4%)  hovers above the track, explodes on contact
 	--   [0.21,0.26) -> medic     (5%)  medkit pin: un-stuns towers it passes (no ram)
 	--   [0.26,0.30) -> trail     (4%)  lays a glowing trail: speeds up pins + burns enemies
-	--   [0.30,0.40) -> rocket    (10%, max only)  high damage + speed, explodes
-	--   [0.40,0.65) -> shooter   (25%, max only)  carries a gun and fires as it advances
+	--   [0.30,0.34) -> stunner   (4%)  freezes every enemy in the area on impact
+	--   [0.34,0.44) -> rocket    (10%, max only)  high damage + speed, explodes
+	--   [0.44,0.69) -> shooter   (25%, max only)  carries a gun and fires as it advances
 	local roll = math.random()
 	local mega = roll < 0.01
 	local slingshot = not mega and roll < 0.06
@@ -822,6 +836,15 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not floater
 		and not medic
 		and roll < 0.30
+	local stunner = not mega
+		and not slingshot
+		and not storm
+		and not classic
+		and not trojan
+		and not floater
+		and not medic
+		and not trail
+		and roll < 0.34
 	local rocket = maxLevel
 		and not mega
 		and not slingshot
@@ -831,7 +854,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not floater
 		and not medic
 		and not trail
-		and roll < 0.40
+		and not stunner
+		and roll < 0.44
 	local shooter = maxLevel
 		and not mega
 		and not slingshot
@@ -841,8 +865,9 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		and not floater
 		and not medic
 		and not trail
+		and not stunner
 		and not rocket
-		and roll < 0.65
+		and roll < 0.69
 
 	-- defaults: a plain random-color pin heading straight for the enemy spawn
 	local scale = 0.9
@@ -860,6 +885,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local maxLimbs = 0
 	local spawnOnDeath = 0
 	local floatHeight = 0
+	local stunDuration = 0
+	local stunRadius = 0
 	local startWaypoint = startIdx - 1 -- normal pins head toward the spawn (path[1])
 
 	if mega then
@@ -896,6 +923,10 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		scale = 0.7
 		color = TRAIL_COLOR -- glowing cyan comet
 		speed = ALLY_SPEED * 1.4 -- zippy, so it lays a long trail
+	elseif stunner then
+		color = Color3.fromRGB(255, 235, 90) -- electric yellow
+		stunDuration = 2 -- freezes enemies for 2s
+		stunRadius = ALLY_RAM_RADIUS * 2
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
 		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
@@ -938,6 +969,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		medic = medic,
 		trail = trail,
 		trailCooldown = 0,
+		stunDuration = stunDuration,
+		stunRadius = stunRadius,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -987,6 +1020,8 @@ function EnemyService.spawnDrillPin(damage: number, position: Vector3)
 		medic = false,
 		trail = false,
 		trailCooldown = 0,
+		stunDuration = 0,
+		stunRadius = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -1107,6 +1142,8 @@ local function spawnMiniPin(damage: number, position: Vector3)
 		medic = false,
 		trail = false,
 		trailCooldown = 0,
+		stunDuration = 0,
+		stunRadius = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -1262,7 +1299,17 @@ local function stepAllies(dt: number)
 			end
 		end
 		if rammed then
-			if ally.spawnOnDeath > 0 then
+			if ally.stunDuration > 0 then
+				-- STUNNER: freeze every enemy in the area (and a small hit)
+				for _, enemy in active do
+					local d = (enemy.primary.Position - ally.primary.Position).Magnitude
+					if not enemy.dead and d <= ally.stunRadius then
+						EnemyService.stunEnemy(enemy, ally.stunDuration)
+						EnemyService.takeDamage(enemy, ally.damage)
+					end
+				end
+				bigBoom(ally.primary.Position, ally.color, ally.stunRadius)
+			elseif ally.spawnOnDeath > 0 then
 				-- TROJAN: small AoE hit, then BURST into a swarm of mini pins
 				for _, enemy in active do
 					local d = (enemy.primary.Position - ally.primary.Position).Magnitude
@@ -1372,17 +1419,20 @@ function EnemyService.step(dt: number)
 			continue
 		end
 
-		-- Paint visual: pink while the slow is active, back to normal once it wears off.
-		local painted = os.clock() < enemy.slowUntil
-		local wantColor = if painted
-			then enemy.baseColor:Lerp(PAINT_COLOR, 0.7)
+		-- Status visual: yellow while stunned, pink while painted, else normal color.
+		local now = os.clock()
+		local stunned = now < enemy.stunnedUntil
+		local painted = now < enemy.slowUntil
+		local wantColor = if stunned
+			then enemy.baseColor:Lerp(STUN_COLOR, 0.7)
+			elseif painted then enemy.baseColor:Lerp(PAINT_COLOR, 0.7)
 			else enemy.baseColor
 		if enemy.primary.Color ~= wantColor then
 			enemy.primary.Color = wantColor
 		end
 
-		if frozen then
-			continue -- defragged: hold position
+		if frozen or stunned then
+			continue -- defragged or stunned: hold position
 		end
 
 		local target = path[enemy.waypointIndex]
