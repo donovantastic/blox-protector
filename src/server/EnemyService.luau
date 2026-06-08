@@ -51,6 +51,7 @@ type Ally = {
 	limbs: number, -- limb-shooter pin: limbs left to fire (0 = none / out of limbs)
 	maxLimbs: number, -- limb-shooter pin: starting limb count (for the slowdown math)
 	spawnOnDeath: number, -- trojan pin: how many mini pins it bursts into on impact (0 = none)
+	floatHeight: number, -- floater pin: studs it hovers above the track (0 = rolls on the ground)
 }
 
 local EnemyService = {}
@@ -726,30 +727,38 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	--   [0.06,0.10) -> storm     (4%)  chain-lightning zaps a string of enemies
 	--   [0.10,0.13) -> classic   (3%)  fires its own limbs, slowing to a stop
 	--   [0.13,0.17) -> trojan    (4%)  bursts into a swarm of mini pins on impact
-	--   [0.17,0.27) -> rocket    (10%, max only)  high damage + speed, explodes
-	--   [0.27,0.52) -> shooter   (25%, max only)  carries a gun and fires as it advances
+	--   [0.17,0.21) -> floater   (4%)  hovers above the track, explodes on contact
+	--   [0.21,0.31) -> rocket    (10%, max only)  high damage + speed, explodes
+	--   [0.31,0.56) -> shooter   (25%, max only)  carries a gun and fires as it advances
 	local roll = math.random()
 	local mega = roll < 0.01
 	local slingshot = not mega and roll < 0.06
 	local storm = not mega and not slingshot and roll < 0.10
 	local classic = not mega and not slingshot and not storm and roll < 0.13
-	-- TEMP: trojan bumped to ~50% for testing (real threshold: 0.17)
-	local trojan = not mega and not slingshot and not storm and not classic and roll < 0.63
+	local trojan = not mega and not slingshot and not storm and not classic and roll < 0.17
+	local floater = not mega
+		and not slingshot
+		and not storm
+		and not classic
+		and not trojan
+		and roll < 0.21
 	local rocket = maxLevel
 		and not mega
 		and not slingshot
 		and not storm
 		and not classic
 		and not trojan
-		and roll < 0.27
+		and not floater
+		and roll < 0.31
 	local shooter = maxLevel
 		and not mega
 		and not slingshot
 		and not storm
 		and not classic
 		and not trojan
+		and not floater
 		and not rocket
-		and roll < 0.52
+		and roll < 0.56
 
 	-- defaults: a plain random-color pin heading straight for the enemy spawn
 	local scale = 0.9
@@ -766,6 +775,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local limbs = 0
 	local maxLimbs = 0
 	local spawnOnDeath = 0
+	local floatHeight = 0
 	local startWaypoint = startIdx - 1 -- normal pins head toward the spawn (path[1])
 
 	if mega then
@@ -790,6 +800,11 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		scale = 1.2 -- a fat, innocent-looking pin...
 		color = Color3.fromRGB(70, 110, 60) -- sneaky army green
 		spawnOnDeath = 6 -- ...that bursts into 6 mini pins on impact
+	elseif floater then
+		scale = 0.55 -- a little floating bomb
+		color = Color3.fromRGB(255, 160, 40) -- warning orange
+		floatHeight = 3 -- hovers above the track
+		explodeR = ALLY_RAM_RADIUS * 1.5 -- explodes the moment it touches an enemy
 	elseif rocket then
 		scale, color = 1.3, Color3.fromRGB(255, 90, 40)
 		speed, dmg = ALLY_SPEED * 2, damage * 3 -- high speed + high damage
@@ -826,6 +841,7 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 		limbs = limbs,
 		maxLimbs = maxLimbs,
 		spawnOnDeath = spawnOnDeath,
+		floatHeight = floatHeight,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -940,6 +956,7 @@ local function spawnMiniPin(damage: number, position: Vector3)
 		limbs = 0,
 		maxLimbs = 0,
 		spawnOnDeath = 0, -- minis never burst (no infinite spawn)
+		floatHeight = 0,
 	}
 	model:PivotTo(CFrame.new(path[startIdx] + Vector3.new(0, primary.Size.Y / 2, 0)))
 	model.Parent = container
@@ -1094,7 +1111,12 @@ local function stepAllies(dt: number)
 		else
 			newGround = pos + toTarget.Unit * stepDist
 		end
-		local newPos = newGround + Vector3.new(0, ally.primary.Size.Y / 2, 0)
+		-- floaters hover (and gently bob) above the track instead of rolling on it
+		local lift = ally.primary.Size.Y / 2 + ally.floatHeight
+		if ally.floatHeight > 0 then
+			lift += math.sin(os.clock() * 3) * 0.4
+		end
+		local newPos = newGround + Vector3.new(0, lift, 0)
 		if distLeft > 0.001 then
 			ally.model:PivotTo(CFrame.lookAt(newPos, newPos + toTarget.Unit))
 		else
