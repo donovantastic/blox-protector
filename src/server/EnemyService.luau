@@ -733,7 +733,8 @@ function EnemyService.spawnAlly(damage: number, nearPosition: Vector3, maxLevel:
 	local slingshot = not mega and roll < 0.06
 	local storm = not mega and not slingshot and roll < 0.10
 	local classic = not mega and not slingshot and not storm and roll < 0.13
-	local trojan = not mega and not slingshot and not storm and not classic and roll < 0.17
+	-- TEMP: trojan bumped to ~50% for testing (real threshold: 0.17)
+	local trojan = not mega and not slingshot and not storm and not classic and roll < 0.63
 	local rocket = maxLevel
 		and not mega
 		and not slingshot
