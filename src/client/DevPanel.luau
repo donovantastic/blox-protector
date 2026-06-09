@@ -34,7 +34,7 @@ function DevPanel.init()
 
 	-- always-visible toggle button (top-left)
 	local toggle = Instance.new("TextButton")
-	toggle.Position = UDim2.fromOffset(12, 12)
+	toggle.Position = UDim2.fromOffset(16, 64) -- below the coin chip (16,16 + 40 tall), no overlap
 	toggle.Size = UDim2.fromOffset(78, 30)
 	toggle.BackgroundColor3 = Color3.fromRGB(28, 32, 40)
 	toggle.BackgroundTransparency = 0.15
@@ -50,7 +50,7 @@ function DevPanel.init()
 	-- the panel itself (hidden until toggled)
 	local panel = Instance.new("Frame")
 	panel.Visible = false
-	panel.Position = UDim2.fromOffset(12, 50)
+	panel.Position = UDim2.fromOffset(16, 102) -- opens just under the DEV toggle
 	panel.Size = UDim2.fromOffset(230, #BUTTONS * 46 + 50)
 	panel.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
 	panel.BackgroundTransparency = 0.08
