@@ -73,8 +73,9 @@ function UIController.init()
 
 	local cash = chip(row, 1, Color3.fromRGB(120, 220, 120))
 	local wave = chip(row, 2, Color3.fromRGB(120, 180, 240))
-	local hp = chip(row, 3, Color3.fromRGB(240, 110, 110))
+	local hp, hpFrame = chip(row, 3, Color3.fromRGB(240, 110, 110))
 	local towers, towersFrame = chip(row, 4, Color3.fromRGB(180, 150, 250))
+	local hpCriticalTween: Tween? = nil -- the looping <10% "base is dying" warning flash
 
 	local status = Instance.new("TextLabel")
 	status.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -92,6 +93,25 @@ function UIController.init()
 		cash.Text = "$ " .. state.cash
 		wave.Text = "Wave " .. state.wave
 		hp.Text = "Base " .. state.baseHP .. " / " .. state.maxBaseHP
+		local hpFrac = if state.maxBaseHP > 0 then state.baseHP / state.maxBaseHP else 1
+		hp.TextColor3 = if hpFrac <= 0.25
+			then Color3.fromRGB(245, 90, 90) -- red: 25% or less
+			elseif hpFrac <= 0.50 then Color3.fromRGB(245, 195, 90) -- amber: half or less
+			else Color3.fromRGB(235, 238, 245)
+		local hpCritical = hpFrac < 0.10 and state.status == "playing"
+		if hpCritical and not hpCriticalTween then
+			-- below 10%: a steady looping flash until healed back up or the round ends
+			hpCriticalTween = TweenService:Create(
+				hpFrame,
+				TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1, true),
+				{ BackgroundColor3 = Color3.fromRGB(170, 40, 40) }
+			)
+			hpCriticalTween:Play()
+		elseif not hpCritical and hpCriticalTween then
+			hpCriticalTween:Cancel()
+			hpCriticalTween = nil
+			hpFrame.BackgroundColor3 = Color3.fromRGB(24, 26, 32)
+		end
 		towers.Text = "Towers " .. state.towersPlaced .. " / " .. state.towerLimit
 		local placed, limit = state.towersPlaced, state.towerLimit
 		local atCap = placed >= limit
