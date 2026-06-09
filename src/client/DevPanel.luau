@@ -8,21 +8,37 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared").Remotes)
+local ClientState = require(script.Parent.ClientState)
 local devCommand = Remotes.event("DevCommand")
 
 local player = Players.LocalPlayer
 
 local DevPanel = {}
 
--- each button: a label + the action (and optional value) sent to the server
-local BUTTONS: { { label: string, action: string, value: number? } } = {
+-- each button: a server action (+ optional value), OR a client-only handler that
+-- receives the button (so a toggle can show its on/off state).
+type DevButton = { label: string, action: string?, value: number?, client: ((TextButton) -> ())? }
+local BUTTONS: { DevButton } = {
 	{ label = "💰  +$1,000", action = "money", value = 1000 },
 	{ label = "💰  +$10,000", action = "money", value = 10000 },
 	{ label = "🗼  Unlock All Towers", action = "unlockAll" },
 	{ label = "⏭  Skip Wave", action = "skipWave" },
 	{ label = "❤  Heal Base", action = "healBase" },
+	{ label = "🩹  Base → 50", action = "setBase", value = 50 },
+	{ label = "🩹  Base → 20", action = "setBase", value = 20 },
+	{ label = "🩹  Base → 5", action = "setBase", value = 5 },
 	{ label = "💀  Clear Enemies", action = "clearEnemies" },
+	{ label = "⚔  Act 1 Battle", action = "gotoBattle", value = 1 },
+	{ label = "⚔  Act 2 Battle", action = "gotoBattle", value = 2 },
 	{ label = "🏆  Win Round", action = "win" },
+	{
+		label = "🎬  Skip Cutscenes: OFF",
+		client = function(btn)
+			ClientState.skipCutscenes = not ClientState.skipCutscenes
+			btn.Text = "🎬  Skip Cutscenes: "
+				.. (if ClientState.skipCutscenes then "ON" else "OFF")
+		end,
+	},
 }
 
 function DevPanel.init()
@@ -100,7 +116,11 @@ function DevPanel.init()
 		bc.Parent = btn
 		btn.Parent = list
 		btn.Activated:Connect(function()
-			devCommand:FireServer(b.action, b.value)
+			if b.client then
+				b.client(btn)
+			elseif b.action then
+				devCommand:FireServer(b.action, b.value)
+			end
 		end)
 	end
 

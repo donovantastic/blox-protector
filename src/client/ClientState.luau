@@ -6,6 +6,7 @@ local ClientState = {}
 
 ClientState.cash = 0
 ClientState.selectedTower = nil :: string?
+ClientState.skipCutscenes = false -- dev toggle: skip the gate power-on cinematic
 
 local listeners: { () -> () } = {}
 

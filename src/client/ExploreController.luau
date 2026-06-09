@@ -20,6 +20,7 @@ local Cards = require(Shared.Configs.Cards)
 local DialogueController = require(script.Parent.DialogueController)
 local ConversationController = require(script.Parent.ConversationController)
 local CardController = require(script.Parent.CardController)
+local ClientState = require(script.Parent.ClientState)
 
 local player = Players.LocalPlayer
 
@@ -105,6 +106,10 @@ end
 
 -- cut the camera to a gate so you see it power on, then hand back
 local function gateCutscene(gpos: Vector3)
+	if ClientState.skipCutscenes then -- dev: skip the cinematic; the gate still powers on
+		endBeat()
+		return
+	end
 	local camera = Workspace.CurrentCamera
 	if not camera then
 		endBeat()

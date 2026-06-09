@@ -113,6 +113,12 @@ function GameState.healBase(amount: number)
 	GameState.broadcast()
 end
 
+-- Dev: set base HP directly, for testing the HUD danger thresholds.
+function GameState.setBaseHP(n: number)
+	baseHP = math.clamp(n, 1, MAX_BASE_HP)
+	GameState.broadcast()
+end
+
 -- Fresh start for the next gauntlet (Act 2).
 function GameState.reset()
 	baseHP = MAX_BASE_HP

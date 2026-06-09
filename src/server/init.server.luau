@@ -298,6 +298,15 @@ Remotes.event("DevCommand").OnServerEvent:Connect(function(player, action, value
 		notify:FireClient(player, "Dev: cleared the enemies")
 	elseif action == "win" then
 		GameState.win()
+	elseif action == "setBase" then
+		local n = if typeof(value) == "number" then value else 50
+		GameState.setBaseHP(n)
+		notify:FireClient(player, ("Dev: base set to %d"):format(n))
+	elseif action == "gotoBattle" then
+		act = if typeof(value) == "number" then value else 1
+		ModeService.set("Explore") -- bounce off the current mode so the Gauntlet entry re-fires
+		ModeService.set("Gauntlet")
+		notify:FireClient(player, ("Dev: jumped to Act %d battle"):format(act))
 	end
 end)
 Remotes.event("DialogueDone").OnServerEvent:Connect(function()
