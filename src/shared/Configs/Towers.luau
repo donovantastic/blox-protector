@@ -41,6 +41,9 @@ export type Tower = {
 	-- optional: a "summon" tower spawns friendly pins that charge UP the lane and ram
 	-- enemies. `fireRate` = pins per second, `damage` = the ram damage of each pin.
 	summon: boolean?,
+	-- optional: an "income" tower (the ATM) doesn't fight — it pays out cash equal to its
+	-- level's `damage` value after every wave clears.
+	income: boolean?,
 }
 
 local Towers: { [string]: Tower } = {
@@ -174,6 +177,22 @@ local Towers: { [string]: Tower } = {
 			{ range = 0, damage = 30, cost = 120 }, -- damage = each pin's ram hit
 			{ range = 0, damage = 50, cost = 190 },
 			{ range = 0, damage = 85, cost = 320 },
+		},
+	},
+
+	ATM = {
+		name = "ATM",
+		desc = "A blocky cash machine. It doesn't fight — it prints money, paying out after every wave.",
+		model = "ATM",
+		cost = 250,
+		placementRadius = 4,
+		fireRate = 0, -- never fires
+		targeting = "first", -- unused
+		income = true, -- pays cash on wave-clear; amount = the level's `damage` value
+		levels = {
+			{ range = 0, damage = 50, cost = 250 }, -- $50 / wave
+			{ range = 0, damage = 90, cost = 200 }, -- $90 / wave (upgrade $200)
+			{ range = 0, damage = 150, cost = 350 }, -- $150 / wave (upgrade $350)
 		},
 	},
 

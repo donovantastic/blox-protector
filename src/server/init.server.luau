@@ -186,6 +186,8 @@ ModeService.onChange = function(mode)
 	end
 end
 
+WaveManager.onWaveCleared = TowerService.onWaveCleared
+
 WaveManager.onComplete = function(won)
 	if not won then
 		return

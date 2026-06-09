@@ -30,6 +30,7 @@ local EVENTS = {
 	"TowerUnlocked", -- (towerType: string) server -> client: tower now placeable
 	"GatePoweredOn", -- (position: Vector3) server -> client: cut the camera to this gate
 	"DevCommand", -- (action: string, value: any?) dev panel: money/skipWave/unlockAll/etc.
+	"AtmPayout", -- (positions: {Vector3}, total: number) server -> client: ATM cha-ching + $ VFX
 }
 
 local Remotes = {}

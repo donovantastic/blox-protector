@@ -26,6 +26,9 @@ local notify = Remotes.event("Notify") -- mid-wave beats use the NON-blocking to
 -- set by init.server: fired when the gauntlet ends (won = survived all waves)
 WaveManager.onComplete = function(_won: boolean) end :: (boolean) -> ()
 
+-- set by init.server: fired each time a wave clears (so ATMs can pay out)
+WaveManager.onWaveCleared = function() end :: () -> ()
+
 -- called by init.server when a client reports the intro sequence finished
 function WaveManager.markIntroDone()
 	introDone = true
@@ -110,6 +113,7 @@ function WaveManager.start(chapterIndex: number, isFinal: boolean)
 				break
 			end
 			Economy.add(30 + waveNumber * 10) -- wave-clear bonus: keeps the economy flowing
+			WaveManager.onWaveCleared() -- ATMs pay out
 			notify:FireAllClients(
 				("Wave %d cleared!  +$%d"):format(waveNumber, 30 + waveNumber * 10)
 			)

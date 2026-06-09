@@ -17,6 +17,7 @@ local Economy = require(script.Parent.EconomyService)
 local EnemyService = require(script.Parent.EnemyService)
 local GameState = require(script.Parent.GameState)
 local Map = require(script.Parent.Map)
+local Remotes = require(Shared.Remotes)
 
 type Tower = {
 	id: number,
@@ -63,6 +64,7 @@ local GRAYBOX: { [string]: Color3 } = {
 	Drill = Color3.fromRGB(255, 140, 40), -- molten-orange industrial drill
 	Trowel = Color3.fromRGB(170, 70, 55), -- brick red
 	Summoner = Color3.fromRGB(70, 140, 240), -- friendly-pin blue
+	ATM = Color3.fromRGB(240, 140, 60), -- orange cash machine
 }
 
 -- A custom graybox for the Drill: a tiered metal cone (a stack of discs that shrink
@@ -202,6 +204,68 @@ local function buildWallModel(model: Model, position: Vector3): (Model, BasePart
 	return model, wall
 end
 
+-- A low-poly ATM (the income tower): orange body, yellow screen, green keypad, a cash
+-- slot, and a floating "ATM" sign. Replaced if a real model named "ATM" is added.
+local function buildATMModel(model: Model, position: Vector3): (Model, BasePart)
+	local ORANGE = Color3.fromRGB(240, 140, 60)
+	local function piece(name: string, size: Vector3, offset: Vector3, color: Color3): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.Size = size
+		p.Position = position + offset
+		p.Color = color
+		p.Material = Enum.Material.SmoothPlastic
+		p.Parent = model
+		return p
+	end
+
+	local body = piece("Body", Vector3.new(4, 8, 3.6), Vector3.new(0, 4, 0), ORANGE)
+	piece(
+		"Screen",
+		Vector3.new(3, 2.3, 0.4),
+		Vector3.new(0, 5.4, 1.85),
+		Color3.fromRGB(245, 222, 96)
+	)
+	piece(
+		"Keypad",
+		Vector3.new(2.6, 1.5, 0.4),
+		Vector3.new(0, 3.4, 1.85),
+		Color3.fromRGB(70, 190, 110)
+	)
+	piece(
+		"Slot",
+		Vector3.new(2.6, 0.5, 0.4),
+		Vector3.new(0, 1.7, 1.85),
+		Color3.fromRGB(245, 222, 96)
+	)
+
+	-- floating "ATM" sign so the tower reads from any angle
+	local sign = Instance.new("BillboardGui")
+	sign.Size = UDim2.fromOffset(70, 30)
+	sign.StudsOffset = Vector3.new(0, 5, 0)
+	sign.AlwaysOnTop = true
+	sign.Adornee = body
+	sign.Parent = body
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBlack
+	label.TextScaled = true
+	label.Text = "ATM"
+	label.TextColor3 = Color3.fromRGB(90, 220, 120)
+	label.TextStrokeTransparency = 0.4
+	label.Parent = sign
+
+	-- unused turret (ATMs don't aim) — kept for the (Model, BasePart) contract
+	local turret = piece("Turret", Vector3.new(0.4, 0.4, 0.4), Vector3.new(0, 8.4, 0), ORANGE)
+	turret.Transparency = 1
+
+	model.PrimaryPart = body
+	return model, turret
+end
+
 -- ---------------------------------------------------------------- model -------
 local function buildTower(
 	def: Towers.Tower,
@@ -236,6 +300,11 @@ local function buildTower(
 	-- a wall tower gets a brick slab across the lane
 	if def.wall then
 		return buildWallModel(model, position)
+	end
+
+	-- the ATM gets a hand-built cash-machine graybox
+	if def.income then
+		return buildATMModel(model, position)
 	end
 
 	local base = Instance.new("Part")
@@ -444,6 +513,9 @@ function TowerService.step(dt: number)
 		if tower.cooldown > 0 then
 			tower.cooldown = math.max(0, tower.cooldown - dt) -- reload even while idle
 		end
+		if tower.def.income then
+			continue -- ATMs don't fight; they pay out on wave clear
+		end
 		if tower.def.wall then
 			fireWall(tower, enemies) -- area damage, no aiming/targeting
 			continue
@@ -627,6 +699,24 @@ function TowerService.reset()
 	end
 	placedCount = 0
 	GameState.setTowersPlaced(0)
+end
+
+-- Called when a wave clears: every ATM pays out (= its level's `damage`). Fires
+-- AtmPayout so the client can cha-ching + show a dollar burst over each machine.
+function TowerService.onWaveCleared()
+	local positions: { Vector3 } = {}
+	local total = 0
+	for _, tower in towers do
+		if tower.def.income then
+			local amount = level(tower).damage
+			Economy.add(amount)
+			total += amount
+			table.insert(positions, tower.position)
+		end
+	end
+	if total > 0 then
+		Remotes.event("AtmPayout"):FireAllClients(positions, total)
+	end
 end
 
 function TowerService.init()

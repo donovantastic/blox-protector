@@ -23,6 +23,7 @@ local Balance = {
 		"Drill",
 		"Trowel",
 		"Summoner",
+		"ATM",
 	},
 
 	-- Combat
