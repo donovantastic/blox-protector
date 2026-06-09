@@ -5,6 +5,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared").Remotes)
 local ClientState = require(script.Parent.ClientState)
@@ -12,8 +13,9 @@ local SoundController = require(script.Parent.SoundController)
 
 local UIController = {}
 local lastStatus: string?
+local lastAtCap = false
 
-local function chip(parent: Instance, order: number, color: Color3): TextLabel
+local function chip(parent: Instance, order: number, color: Color3): (TextLabel, Frame)
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.fromOffset(190, 48)
 	frame.BackgroundColor3 = Color3.fromRGB(24, 26, 32)
@@ -42,7 +44,7 @@ local function chip(parent: Instance, order: number, color: Color3): TextLabel
 	label.Text = "—"
 	label.Parent = frame
 	frame.Parent = parent
-	return label
+	return label, frame
 end
 
 function UIController.init()
@@ -72,7 +74,7 @@ function UIController.init()
 	local cash = chip(row, 1, Color3.fromRGB(120, 220, 120))
 	local wave = chip(row, 2, Color3.fromRGB(120, 180, 240))
 	local hp = chip(row, 3, Color3.fromRGB(240, 110, 110))
-	local towers = chip(row, 4, Color3.fromRGB(180, 150, 250))
+	local towers, towersFrame = chip(row, 4, Color3.fromRGB(180, 150, 250))
 
 	local status = Instance.new("TextLabel")
 	status.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -91,6 +93,21 @@ function UIController.init()
 		wave.Text = "Wave " .. state.wave
 		hp.Text = "Base " .. state.baseHP .. " / " .. state.maxBaseHP
 		towers.Text = "Towers " .. state.towersPlaced .. " / " .. state.towerLimit
+		local placed, limit = state.towersPlaced, state.towerLimit
+		local atCap = placed >= limit
+		towers.TextColor3 = if atCap
+			then Color3.fromRGB(245, 90, 90) -- red: maxed
+			elseif placed >= limit - 2 then Color3.fromRGB(245, 195, 90) -- amber: nearly full
+			else Color3.fromRGB(235, 238, 245)
+		if atCap and not lastAtCap then
+			-- just hit the cap: a quick double-flash to grab the eye
+			TweenService:Create(
+				towersFrame,
+				TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 1, true),
+				{ BackgroundColor3 = Color3.fromRGB(150, 45, 45) }
+			):Play()
+		end
+		lastAtCap = atCap
 		local currentStatus = tostring(state.status)
 		if currentStatus ~= lastStatus then
 			if currentStatus == "lost" then
