@@ -306,7 +306,15 @@ Remotes.event("DevCommand").OnServerEvent:Connect(function(player, action, value
 		act = if typeof(value) == "number" then value else 1
 		ModeService.set("Explore") -- bounce off the current mode so the Gauntlet entry re-fires
 		ModeService.set("Gauntlet")
-		notify:FireClient(player, ("Dev: jumped to Act %d battle"):format(act))
+		-- grant the loadout you'd have earned reaching this battle, so the test is realistic
+		CardService.grant("rollback") -- Builderman's Act 1 card
+		if act >= 2 then
+			TowerService.unlock("Sword") -- the Merchant unlock
+			Remotes.event("TowerUnlocked"):FireAllClients("Sword")
+			CardService.grant("defrag") -- Telamon (Act 2)
+			CardService.grant("hotfix") -- Stickmasterluke (Act 2)
+		end
+		notify:FireClient(player, ("Dev: Act %d battle + earned loadout"):format(act))
 	end
 end)
 Remotes.event("DialogueDone").OnServerEvent:Connect(function()
