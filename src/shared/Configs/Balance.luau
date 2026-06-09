@@ -9,6 +9,8 @@ local Balance = {
 	-- starters stay locked until earned; a loadout-choice mechanic lands once there are
 	-- more than 10 towers to pick from.
 	SellRefund = 0.6, -- fraction of total cash spent on a tower, refunded on sell
+	TowerLimitStart = 10, -- towers you can have placed at once at the start of a run;
+	-- grows later as you progress (XP/money unlock mechanic — TBD). Selling frees a slot.
 
 	-- Starter loadout: the towers unlocked from the start (fill the first slots;
 	-- remaining slots are "locked" placeholders for future unlocks / crates).

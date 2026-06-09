@@ -497,6 +497,8 @@ local function applyAttributes(tower: Tower)
 	tower.model:SetAttribute("Spent", tower.spent)
 end
 
+local placedCount = 0 -- towers currently on the field (drives the cap + HUD X/limit)
+
 -- Returns (ok, reason). On success the tower is built + cash spent.
 function TowerService.place(
 	_player: Player,
@@ -507,6 +509,13 @@ function TowerService.place(
 	-- authority, so this is what truly stops it even if a client tries anyway
 	if GameState.getStatus() ~= "playing" then
 		return false, "Round's over — can't place towers"
+	end
+	if not GameState.canPlaceTower() then
+		return false,
+			("Tower limit reached (%d/%d) — sell one or play a card"):format(
+				GameState.getTowersPlaced(),
+				GameState.getTowerLimit()
+			)
 	end
 	local def = Towers[towerType]
 	if not def then
@@ -546,6 +555,8 @@ function TowerService.place(
 	towers[tower.id] = tower
 	applyAttributes(tower)
 	model.Parent = towersFolder
+	placedCount += 1
+	GameState.setTowersPlaced(placedCount)
 	return true, "ok"
 end
 
@@ -604,6 +615,8 @@ function TowerService.sell(_player: Player, towerId: number): (boolean, string)
 	Economy.add(math.floor(tower.spent * Balance.SellRefund))
 	tower.model:Destroy()
 	towers[towerId] = nil
+	placedCount = math.max(0, placedCount - 1)
+	GameState.setTowersPlaced(placedCount)
 	return true, "ok"
 end
 
@@ -612,6 +625,8 @@ function TowerService.reset()
 		tower.model:Destroy()
 		towers[id] = nil
 	end
+	placedCount = 0
+	GameState.setTowersPlaced(0)
 end
 
 function TowerService.init()

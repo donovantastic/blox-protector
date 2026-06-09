@@ -60,7 +60,7 @@ function UIController.init()
 	local row = Instance.new("Frame")
 	row.AnchorPoint = Vector2.new(0.5, 0.5)
 	row.Position = UDim2.fromScale(0.5, 0.5)
-	row.Size = UDim2.fromOffset(600, 48)
+	row.Size = UDim2.fromOffset(800, 48)
 	row.BackgroundTransparency = 1
 	row.Parent = top
 	local layout = Instance.new("UIListLayout")
@@ -72,6 +72,7 @@ function UIController.init()
 	local cash = chip(row, 1, Color3.fromRGB(120, 220, 120))
 	local wave = chip(row, 2, Color3.fromRGB(120, 180, 240))
 	local hp = chip(row, 3, Color3.fromRGB(240, 110, 110))
+	local towers = chip(row, 4, Color3.fromRGB(180, 150, 250))
 
 	local status = Instance.new("TextLabel")
 	status.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -89,6 +90,7 @@ function UIController.init()
 		cash.Text = "$ " .. state.cash
 		wave.Text = "Wave " .. state.wave
 		hp.Text = "Base " .. state.baseHP .. " / " .. state.maxBaseHP
+		towers.Text = "Towers " .. state.towersPlaced .. " / " .. state.towerLimit
 		local currentStatus = tostring(state.status)
 		if currentStatus ~= lastStatus then
 			if currentStatus == "lost" then

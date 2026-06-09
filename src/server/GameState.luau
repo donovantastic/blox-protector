@@ -1,11 +1,12 @@
 --!strict
--- Owns the round state (base HP, wave, win/lose) and the ONE client snapshot.
--- Solo for now: a single shared state. (Per-player state is a Phase 2 change.)
+-- Owns the round state (base HP, wave, tower cap, win/lose) and the ONE client
+-- snapshot. Solo for now: a single shared state. (Per-player state is a Phase 2 change.)
 
 local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Remotes = require(Shared.Remotes)
+local Balance = require(Shared.Configs.Balance)
 local Economy = require(script.Parent.EconomyService)
 
 local GameState = {}
@@ -15,6 +16,8 @@ local DEV_NO_LOSE = true -- dev test: base takes damage for feedback but never a
 
 local baseHP = MAX_BASE_HP
 local wave = 0
+local towerLimit = Balance.TowerLimitStart -- max towers placed at once; grows with progression
+local towersPlaced = 0
 local status: "playing" | "won" | "lost" = "playing"
 
 local stateChanged = Remotes.event("StateChanged")
@@ -25,6 +28,8 @@ local function snapshot()
 		baseHP = baseHP,
 		maxBaseHP = MAX_BASE_HP,
 		cash = Economy.getCash(),
+		towersPlaced = towersPlaced,
+		towerLimit = towerLimit,
 		status = status,
 	}
 end
@@ -37,6 +42,8 @@ end
 function GameState.init()
 	baseHP = MAX_BASE_HP
 	wave = 0
+	towerLimit = Balance.TowerLimitStart
+	towersPlaced = 0
 	status = "playing"
 	-- send current state to anyone who joins
 	Players.PlayerAdded:Connect(function()
@@ -52,6 +59,31 @@ end
 
 function GameState.getStatus()
 	return status
+end
+
+-- ---- tower placement cap -----------------------------------------------------
+function GameState.canPlaceTower(): boolean
+	return towersPlaced < towerLimit
+end
+
+function GameState.getTowerLimit(): number
+	return towerLimit
+end
+
+function GameState.getTowersPlaced(): number
+	return towersPlaced
+end
+
+-- TowerService calls this on every place / sell / reset so the HUD + cap stay current.
+function GameState.setTowersPlaced(n: number)
+	towersPlaced = n
+	GameState.broadcast()
+end
+
+-- the growth hook: progression bumps the cap (XP/money mechanic TBD).
+function GameState.setTowerLimit(n: number)
+	towerLimit = n
+	GameState.broadcast()
 end
 
 function GameState.damageBase(amount: number)
@@ -85,6 +117,8 @@ end
 function GameState.reset()
 	baseHP = MAX_BASE_HP
 	wave = 0
+	towerLimit = Balance.TowerLimitStart
+	towersPlaced = 0
 	status = "playing"
 	GameState.broadcast()
 end
