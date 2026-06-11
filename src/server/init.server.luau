@@ -251,11 +251,12 @@ local function report(player: Player, ok: boolean, reason: string)
 	end
 end
 
-Remotes.event("PlaceTower").OnServerEvent:Connect(function(player, towerType, position)
+Remotes.event("PlaceTower").OnServerEvent:Connect(function(player, towerType, position, rotation)
 	if typeof(towerType) ~= "string" or typeof(position) ~= "Vector3" then
 		return
 	end
-	report(player, TowerService.place(player, towerType, position))
+	local rot = if typeof(rotation) == "number" then rotation else 0
+	report(player, TowerService.place(player, towerType, position, rot))
 end)
 Remotes.event("UpgradeTower").OnServerEvent:Connect(function(player, towerId)
 	if typeof(towerId) ~= "number" then

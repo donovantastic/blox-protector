@@ -575,7 +575,8 @@ local placedCount = 0 -- towers currently on the field (drives the cap + HUD X/l
 function TowerService.place(
 	_player: Player,
 	towerType: string,
-	position: Vector3
+	position: Vector3,
+	rotation: number?
 ): (boolean, string)
 	-- no building once the round is decided (won or lost) — the server is the
 	-- authority, so this is what truly stops it even if a client tries anyway
@@ -611,6 +612,12 @@ function TowerService.place(
 	end
 
 	local model, turret = buildTower(def, towerType, position)
+	-- face the tower the way the player previewed it. Snapped to 45° steps on the
+	-- server so a modified client can't place at odd angles.
+	local rot = math.floor(((rotation or 0) / 45) + 0.5) * 45 % 360
+	if rot ~= 0 then
+		model:PivotTo(model:GetPivot() * CFrame.Angles(0, math.rad(rot), 0))
+	end
 	nextId += 1
 	local tower: Tower = {
 		id = nextId,
