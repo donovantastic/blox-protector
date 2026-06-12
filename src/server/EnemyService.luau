@@ -154,16 +154,18 @@ local function buildPinEnemy(
 		return p
 	end
 
-	-- red flared spool: a round core cylinder, a wide collar disc up top, a wide skirt
-	-- disc at the base. Cylinders (not boxes) give it a smooth, rounded silhouette, and a
-	-- little Reflectance makes the plastic read as glossy candy-red instead of flat matte.
+	-- red flared spool: a rounded (ellipsoid) core, a wide collar disc up top, a wide skirt
+	-- disc at the base. The core is a Ball (a Ball with an uneven Size renders as a smooth
+	-- egg/ellipsoid) — NOT a Cylinder: the body is the PrimaryPart, and the movement loop
+	-- re-aims the PrimaryPart to face travel, which would tip a cylinder onto its side. An
+	-- ellipsoid has no long axis to tip. A little Reflectance gives it a glossy candy shine.
 	local body = piece(
 		"Body",
-		Vector3.new(3.4, 2.2, 2.2), -- length(=height once upright) x diameter x diameter
-		CFrame.new(0, 0, 0) * UPRIGHT,
+		Vector3.new(2.3, 3.4, 1.5), -- same proportions as the old box body, just rounded off
+		CFrame.new(0, 0, 0),
 		RED,
 		Enum.Material.SmoothPlastic,
-		Enum.PartType.Cylinder
+		Enum.PartType.Ball
 	)
 	body.Reflectance = 0.12
 	local collar = piece(
@@ -185,9 +187,8 @@ local function buildPinEnemy(
 	)
 	skirt.Reflectance = 0.12
 
-	-- cartoon face on the front (-Z is the direction it walks, so it leads with its face).
-	-- Pushed out to -1.0 so it sits proud of the now-rounded body instead of sinking in.
-	local FZ = -1.0
+	-- cartoon face on the front (-Z is the direction it walks, so it leads with its face)
+	local FZ = -0.78
 	piece(
 		"EyeL",
 		Vector3.new(0.32, 0.42, 0.12),
@@ -515,15 +516,18 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 		return p
 	end
 
-	-- red spool body: a round core cylinder with a wide collar disc up top and a wide
-	-- skirt disc at the base. A touch of Reflectance gives the plastic a glossy candy shine.
+	-- red spool body: a rounded (ellipsoid) core with a wide collar disc up top and a wide
+	-- skirt disc at the base. The core is a Ball (an uneven Size renders as a smooth egg) and
+	-- NOT a Cylinder — the body is the PrimaryPart, and the movement loop re-aims it to face
+	-- travel, which would tip a cylinder on its side; an ellipsoid has no long axis to tip.
+	-- A touch of Reflectance gives the plastic a glossy candy shine.
 	local body = piece(
 		"Body",
-		Vector3.new(3.4, 2.2, 2.2), -- length(=height once upright) x diameter x diameter
-		CFrame.new(0, 0, 0) * UPRIGHT,
+		Vector3.new(2.3, 3.4, 1.5), -- same proportions as the old box body, just rounded off
+		CFrame.new(0, 0, 0),
 		RED,
 		Enum.Material.SmoothPlastic,
-		Enum.PartType.Cylinder
+		Enum.PartType.Ball
 	)
 	body.Reflectance = 0.12
 	local collar = piece(
@@ -545,9 +549,8 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 	)
 	skirt.Reflectance = 0.12
 
-	-- normal smug face (eyes, one raised brow, a smile) — same as the tank pin.
-	-- Pushed out to -1.0 so it sits proud of the now-rounded body instead of sinking in.
-	local FZ = -1.0
+	-- normal smug face (eyes, one raised brow, a smile) — same as the tank pin
+	local FZ = -0.78
 	piece(
 		"EyeL",
 		Vector3.new(0.32, 0.42, 0.12),
