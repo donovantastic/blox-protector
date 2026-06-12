@@ -154,20 +154,23 @@ local function buildPinEnemy(
 		return p
 	end
 
-	-- red flared spool: a rounded (ellipsoid) core, a wide collar disc up top, a wide skirt
-	-- disc at the base. The core is a Ball (a Ball with an uneven Size renders as a smooth
-	-- egg/ellipsoid) — NOT a Cylinder: the body is the PrimaryPart, and the movement loop
-	-- re-aims the PrimaryPart to face travel, which would tip a cylinder onto its side. An
-	-- ellipsoid has no long axis to tip. A little Reflectance gives it a glossy candy shine.
+	-- red flared spool: an upright cylinder core, a wide collar disc up top, a wide skirt
+	-- disc at the base. The core is a plain Block part wearing a CylinderMesh — the mesh draws
+	-- it as a vertical cylinder while the PART stays a box. We can't use a real Cylinder part
+	-- here: the body is the PrimaryPart and the movement loop re-aims the PrimaryPart to face
+	-- travel, which tips a Cylinder part onto its side. Block + CylinderMesh keeps the cylinder
+	-- look AND stays upright (and the part's Color still drives the status tint). A little
+	-- Reflectance gives it a glossy candy shine.
 	local body = piece(
 		"Body",
-		Vector3.new(2.3, 3.4, 1.5), -- same proportions as the old box body, just rounded off
+		Vector3.new(2.3, 3.4, 1.5), -- same footprint as the old box body, rounded into a cylinder
 		CFrame.new(0, 0, 0),
 		RED,
-		Enum.Material.SmoothPlastic,
-		Enum.PartType.Ball
+		Enum.Material.SmoothPlastic
 	)
 	body.Reflectance = 0.12
+	local bodyMesh = Instance.new("CylinderMesh")
+	bodyMesh.Parent = body
 	local collar = piece(
 		"Collar",
 		Vector3.new(0.55, 2.9, 2.9),
@@ -516,20 +519,22 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 		return p
 	end
 
-	-- red spool body: a rounded (ellipsoid) core with a wide collar disc up top and a wide
-	-- skirt disc at the base. The core is a Ball (an uneven Size renders as a smooth egg) and
-	-- NOT a Cylinder — the body is the PrimaryPart, and the movement loop re-aims it to face
-	-- travel, which would tip a cylinder on its side; an ellipsoid has no long axis to tip.
-	-- A touch of Reflectance gives the plastic a glossy candy shine.
+	-- red spool body: an upright cylinder core with a wide collar disc up top and a wide skirt
+	-- disc at the base. The core is a plain Block part wearing a CylinderMesh — the mesh draws
+	-- it as a vertical cylinder while the PART stays a box. We can't use a real Cylinder part:
+	-- the body is the PrimaryPart and the movement loop re-aims it to face travel, which tips a
+	-- Cylinder part onto its side. Block + CylinderMesh keeps the cylinder look AND stays
+	-- upright. A touch of Reflectance gives the plastic a glossy candy shine.
 	local body = piece(
 		"Body",
-		Vector3.new(2.3, 3.4, 1.5), -- same proportions as the old box body, just rounded off
+		Vector3.new(2.3, 3.4, 1.5), -- same footprint as the old box body, rounded into a cylinder
 		CFrame.new(0, 0, 0),
 		RED,
-		Enum.Material.SmoothPlastic,
-		Enum.PartType.Ball
+		Enum.Material.SmoothPlastic
 	)
 	body.Reflectance = 0.12
+	local bodyMesh = Instance.new("CylinderMesh")
+	bodyMesh.Parent = body
 	local collar = piece(
 		"Collar",
 		Vector3.new(0.55, 2.9, 2.9),
