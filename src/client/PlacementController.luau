@@ -1,8 +1,11 @@
 --!strict
 -- Ghost-preview tower placement. While a hotbar tower is selected, a translucent
 -- ghost + range disc follow the mouse; green = placeable, red = blocked (on path /
--- can't afford / overlaps). Left-click places (server re-validates), right-click /
--- Esc cancels. Stays selected after a place so you can drop several.
+-- can't afford / overlaps). The ghost is a clone of the REAL model from
+-- ReplicatedStorage.Assets.Towers when one exists (graybox otherwise), so what you
+-- see is what you place. R rotates the ghost in 45° steps and the tower is placed
+-- facing that way. Left-click places (server re-validates), right-click / Esc cancels.
+-- Stays selected after a place so you can drop several.
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -27,10 +30,19 @@ local GREEN = Color3.fromRGB(80, 220, 120)
 local RED = Color3.fromRGB(230, 90, 90)
 
 local ghostFolder: Folder
-type Ghost = { base: BasePart, turret: BasePart, disc: BasePart, towerType: string, wall: boolean }
+type Ghost = {
+	model: Model?, -- real-model preview (when Assets.Towers has it)
+	highlight: Highlight?,
+	base: BasePart?, -- graybox preview pieces (fallback)
+	turret: BasePart?,
+	disc: BasePart,
+	towerType: string,
+	wall: boolean,
+}
 local ghost: Ghost? = nil
 local lastValid = false
 local lastPos: Vector3? = nil
+local rotationDeg = 0 -- R rotates the ghost (and the placed tower) in 45° steps
 
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -42,26 +54,72 @@ local function clearGhost()
 	end
 end
 
+-- show/hide without destroying the parts' own transparencies
+local function setGhostHidden(hidden: boolean)
+	for _, d in ghostFolder:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.LocalTransparencyModifier = if hidden then 1 else 0
+		end
+	end
+end
+
 local function buildGhost(towerType: string, def: Towers.Tower)
 	clearGhost()
-	local base = Instance.new("Part")
-	base.Anchored = true
-	base.CanCollide = false
-	base.Transparency = 0.45
-	base.Material = Enum.Material.SmoothPlastic
-	-- a wall ghost is a wide slab; a normal tower ghost is a square footprint
-	base.Size = if def.wall
-		then Vector3.new(11, 5, 1.4)
-		else Vector3.new(def.placementRadius * 1.6, 1, def.placementRadius * 1.6)
-	base.Parent = ghostFolder
 
-	local turret = Instance.new("Part")
-	turret.Anchored = true
-	turret.CanCollide = false
-	turret.Transparency = 0.45
-	turret.Material = Enum.Material.SmoothPlastic
-	turret.Size = Vector3.new(1.6, 1.6, 3)
-	turret.Parent = ghostFolder
+	-- prefer a translucent clone of the real tower model so the preview matches
+	-- what actually gets built
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	local towersAssets = assets and assets:FindFirstChild("Towers")
+	local template = towersAssets and towersAssets:FindFirstChild(def.model)
+	local model: Model? = nil
+	local highlight: Highlight? = nil
+	local base: BasePart? = nil
+	local turret: BasePart? = nil
+
+	if template and template:IsA("Model") and template.PrimaryPart then
+		local clone = template:Clone()
+		for _, d in clone:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+				d.CanCollide = false
+				if d.Transparency < 1 then
+					d.Transparency = 0.45
+				end
+			elseif d:IsA("SurfaceGui") or d:IsA("BillboardGui") then
+				d.Enabled = false
+			end
+		end
+		clone.Parent = ghostFolder
+		local hl = Instance.new("Highlight")
+		hl.FillTransparency = 1
+		hl.OutlineTransparency = 0.2
+		hl.Adornee = clone
+		hl.Parent = clone
+		model = clone
+		highlight = hl
+	else
+		-- graybox fallback (no model in Assets.Towers yet)
+		local b = Instance.new("Part")
+		b.Anchored = true
+		b.CanCollide = false
+		b.Transparency = 0.45
+		b.Material = Enum.Material.SmoothPlastic
+		-- a wall ghost is a wide slab; a normal tower ghost is a square footprint
+		b.Size = if def.wall
+			then Vector3.new(11, 5, 1.4)
+			else Vector3.new(def.placementRadius * 1.6, 1, def.placementRadius * 1.6)
+		b.Parent = ghostFolder
+		base = b
+
+		local t = Instance.new("Part")
+		t.Anchored = true
+		t.CanCollide = false
+		t.Transparency = 0.45
+		t.Material = Enum.Material.SmoothPlastic
+		t.Size = Vector3.new(1.6, 1.6, 3)
+		t.Parent = ghostFolder
+		turret = t
+	end
 
 	local range = def.levels[1].range
 	local disc = Instance.new("Part")
@@ -74,6 +132,8 @@ local function buildGhost(towerType: string, def: Towers.Tower)
 	disc.Parent = ghostFolder
 
 	ghost = {
+		model = model,
+		highlight = highlight,
 		base = base,
 		turret = turret,
 		disc = disc,
@@ -152,12 +212,11 @@ local function update()
 	end
 	lastPos = pos
 	if not pos then
-		for _, child in ghostFolder:GetChildren() do
-			(child :: BasePart).Transparency = 1
-		end
+		setGhostHidden(true)
 		lastValid = false
 		return
 	end
+	setGhostHidden(false)
 
 	lastValid = isValid(def, pos)
 	local tint = if lastValid then GREEN else RED
@@ -166,19 +225,35 @@ local function update()
 	g.disc.Color = tint
 	g.disc.CFrame = CFrame.new(pos + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.rad(90))
 
-	if g.wall then
+	if g.model then
+		-- real-model ghost: pivot to the cursor with the chosen rotation; the
+		-- highlight (not the bricks) carries the green/red verdict
+		g.model:PivotTo(CFrame.new(pos) * CFrame.Angles(0, math.rad(rotationDeg), 0))
+		local hl = g.highlight
+		if hl then
+			hl.OutlineColor = tint
+			hl.FillColor = tint
+			hl.FillTransparency = if lastValid then 1 else 0.7
+		end
+	elseif g.wall then
 		-- wall preview: a tall slab on the lane, no turret
-		g.base.Transparency = 0.4
-		g.base.Color = tint
-		g.base.Position = pos + Vector3.new(0, g.base.Size.Y / 2, 0)
-		g.turret.Transparency = 1
+		local base = g.base :: BasePart
+		base.Transparency = 0.4
+		base.Color = tint
+		base.CFrame = CFrame.new(pos + Vector3.new(0, base.Size.Y / 2, 0))
+			* CFrame.Angles(0, math.rad(rotationDeg), 0)
+		local turret = g.turret :: BasePart
+		turret.Transparency = 1
 	else
-		g.base.Transparency = 0.45
-		g.turret.Transparency = 0.45
-		g.base.Color = tint
-		g.turret.Color = tint
-		g.base.Position = pos + Vector3.new(0, 0.5, 0)
-		g.turret.CFrame = CFrame.new(pos + Vector3.new(0, 2.2, 0))
+		local base = g.base :: BasePart
+		local turret = g.turret :: BasePart
+		base.Transparency = 0.45
+		turret.Transparency = 0.45
+		base.Color = tint
+		turret.Color = tint
+		base.Position = pos + Vector3.new(0, 0.5, 0)
+		turret.CFrame = CFrame.new(pos + Vector3.new(0, 2.2, 0))
+			* CFrame.Angles(0, math.rad(rotationDeg), 0)
 	end
 end
 
@@ -196,7 +271,12 @@ function PlacementController.init()
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			local sel = ClientState.selectedTower
 			if sel and lastValid and lastPos then
-				placeRemote:FireServer(sel, lastPos)
+				placeRemote:FireServer(sel, lastPos, rotationDeg)
+			end
+		elseif input.KeyCode == Enum.KeyCode.R then
+			-- quarter-of-a-quarter turn: 8 taps = full circle
+			if ClientState.selectedTower then
+				rotationDeg = (rotationDeg + 45) % 360
 			end
 		elseif
 			input.UserInputType == Enum.UserInputType.MouseButton2

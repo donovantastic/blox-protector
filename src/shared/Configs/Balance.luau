@@ -5,8 +5,12 @@ local Balance = {
 	-- Placement
 	PathClearance = 5, -- studs the path lane needs clear of a tower's footprint
 	WallMaxDist = 6, -- a "wall" tower must be placed within this many studs of the path
-	HotbarSlots = 9, -- total hotbar slots (some locked at start)
+	HotbarSlots = 10, -- loadout cap: two rows of 5 (press T to page). Slots past the
+	-- starters stay locked until earned; a loadout-choice mechanic lands once there are
+	-- more than 10 towers to pick from.
 	SellRefund = 0.6, -- fraction of total cash spent on a tower, refunded on sell
+	TowerLimitStart = 10, -- towers you can have placed at once at the start of a run;
+	-- grows later as you progress (XP/money unlock mechanic — TBD). Selling frees a slot.
 
 	-- Starter loadout: the towers unlocked from the start (fill the first slots;
 	-- remaining slots are "locked" placeholders for future unlocks / crates).
@@ -19,6 +23,7 @@ local Balance = {
 		"Drill",
 		"Trowel",
 		"Summoner",
+		"ATM",
 	},
 
 	-- Combat

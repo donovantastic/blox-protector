@@ -186,6 +186,8 @@ ModeService.onChange = function(mode)
 	end
 end
 
+WaveManager.onWaveCleared = TowerService.onWaveCleared
+
 WaveManager.onComplete = function(won)
 	if not won then
 		return
@@ -249,11 +251,12 @@ local function report(player: Player, ok: boolean, reason: string)
 	end
 end
 
-Remotes.event("PlaceTower").OnServerEvent:Connect(function(player, towerType, position)
+Remotes.event("PlaceTower").OnServerEvent:Connect(function(player, towerType, position, rotation)
 	if typeof(towerType) ~= "string" or typeof(position) ~= "Vector3" then
 		return
 	end
-	report(player, TowerService.place(player, towerType, position))
+	local rot = if typeof(rotation) == "number" then rotation else 0
+	report(player, TowerService.place(player, towerType, position, rot))
 end)
 Remotes.event("UpgradeTower").OnServerEvent:Connect(function(player, towerId)
 	if typeof(towerId) ~= "number" then
@@ -298,6 +301,23 @@ Remotes.event("DevCommand").OnServerEvent:Connect(function(player, action, value
 		notify:FireClient(player, "Dev: cleared the enemies")
 	elseif action == "win" then
 		GameState.win()
+	elseif action == "setBase" then
+		local n = if typeof(value) == "number" then value else 50
+		GameState.setBaseHP(n)
+		notify:FireClient(player, ("Dev: base set to %d"):format(n))
+	elseif action == "gotoBattle" then
+		act = if typeof(value) == "number" then value else 1
+		ModeService.set("Explore") -- bounce off the current mode so the Gauntlet entry re-fires
+		ModeService.set("Gauntlet")
+		-- grant the loadout you'd have earned reaching this battle, so the test is realistic
+		CardService.grant("rollback") -- Builderman's Act 1 card
+		if act >= 2 then
+			TowerService.unlock("Sword") -- the Merchant unlock
+			Remotes.event("TowerUnlocked"):FireAllClients("Sword")
+			CardService.grant("defrag") -- Telamon (Act 2)
+			CardService.grant("hotfix") -- Stickmasterluke (Act 2)
+		end
+		notify:FireClient(player, ("Dev: Act %d battle + earned loadout"):format(act))
 	end
 end)
 Remotes.event("DialogueDone").OnServerEvent:Connect(function()

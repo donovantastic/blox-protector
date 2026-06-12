@@ -8,21 +8,37 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared").Remotes)
+local ClientState = require(script.Parent.ClientState)
 local devCommand = Remotes.event("DevCommand")
 
 local player = Players.LocalPlayer
 
 local DevPanel = {}
 
--- each button: a label + the action (and optional value) sent to the server
-local BUTTONS: { { label: string, action: string, value: number? } } = {
+-- each button: a server action (+ optional value), OR a client-only handler that
+-- receives the button (so a toggle can show its on/off state).
+type DevButton = { label: string, action: string?, value: number?, client: ((TextButton) -> ())? }
+local BUTTONS: { DevButton } = {
 	{ label = "💰  +$1,000", action = "money", value = 1000 },
 	{ label = "💰  +$10,000", action = "money", value = 10000 },
 	{ label = "🗼  Unlock All Towers", action = "unlockAll" },
 	{ label = "⏭  Skip Wave", action = "skipWave" },
 	{ label = "❤  Heal Base", action = "healBase" },
+	{ label = "🩹  Base → 50", action = "setBase", value = 50 },
+	{ label = "🩹  Base → 20", action = "setBase", value = 20 },
+	{ label = "🩹  Base → 5", action = "setBase", value = 5 },
 	{ label = "💀  Clear Enemies", action = "clearEnemies" },
+	{ label = "⚔  Act 1 Battle", action = "gotoBattle", value = 1 },
+	{ label = "⚔  Act 2 Battle", action = "gotoBattle", value = 2 },
 	{ label = "🏆  Win Round", action = "win" },
+	{
+		label = "🎬  Skip Cutscenes: OFF",
+		client = function(btn)
+			ClientState.skipCutscenes = not ClientState.skipCutscenes
+			btn.Text = "🎬  Skip Cutscenes: "
+				.. (if ClientState.skipCutscenes then "ON" else "OFF")
+		end,
+	},
 }
 
 function DevPanel.init()
@@ -34,7 +50,7 @@ function DevPanel.init()
 
 	-- always-visible toggle button (top-left)
 	local toggle = Instance.new("TextButton")
-	toggle.Position = UDim2.fromOffset(12, 12)
+	toggle.Position = UDim2.fromOffset(16, 64) -- below the coin chip (16,16 + 40 tall), no overlap
 	toggle.Size = UDim2.fromOffset(78, 30)
 	toggle.BackgroundColor3 = Color3.fromRGB(28, 32, 40)
 	toggle.BackgroundTransparency = 0.15
@@ -50,7 +66,7 @@ function DevPanel.init()
 	-- the panel itself (hidden until toggled)
 	local panel = Instance.new("Frame")
 	panel.Visible = false
-	panel.Position = UDim2.fromOffset(12, 50)
+	panel.Position = UDim2.fromOffset(16, 102) -- opens just under the DEV toggle
 	panel.Size = UDim2.fromOffset(230, #BUTTONS * 46 + 50)
 	panel.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
 	panel.BackgroundTransparency = 0.08
@@ -100,7 +116,11 @@ function DevPanel.init()
 		bc.Parent = btn
 		btn.Parent = list
 		btn.Activated:Connect(function()
-			devCommand:FireServer(b.action, b.value)
+			if b.client then
+				b.client(btn)
+			elseif b.action then
+				devCommand:FireServer(b.action, b.value)
+			end
 		end)
 	end
 

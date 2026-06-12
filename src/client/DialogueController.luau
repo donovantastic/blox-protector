@@ -22,9 +22,11 @@ local revealRequested = false
 local advanceRequested = false
 local skipRequested = false -- skip the whole sequence (still fires onDone/DialogueDone)
 local sequenceToken = 0
+local SKIP_DELAY = 1.5 -- seconds before SKIP appears, so it doesn't invite an instant skip
 
 local gui: ScreenGui
 local blocker: TextButton
+local skipBtn: TextButton
 local box: Frame
 local nameTab: TextLabel
 local portrait: Frame
@@ -117,6 +119,12 @@ local function playSequence(sequenceKey: string, fireDone: boolean, onDone: (() 
 	gui.Enabled = true
 	blocker.Visible = true
 	box.Visible = true
+	skipBtn.Visible = false -- appears after SKIP_DELAY so it doesn't invite an instant skip
+	task.delay(SKIP_DELAY, function()
+		if token == sequenceToken and playing then
+			skipBtn.Visible = true
+		end
+	end)
 
 	for _, line in sequence do
 		if token ~= sequenceToken or skipRequested then
@@ -254,10 +262,10 @@ function DialogueController.init()
 	textLabel.ZIndex = 3
 	textLabel.Parent = box
 
-	local skipBtn = Instance.new("TextButton")
+	skipBtn = Instance.new("TextButton")
 	skipBtn.Name = "Skip"
-	skipBtn.AnchorPoint = Vector2.new(1, 1)
-	skipBtn.Position = UDim2.new(1, -20, 1, -20)
+	skipBtn.AnchorPoint = Vector2.new(0, 1)
+	skipBtn.Position = UDim2.new(0, 20, 1, -20) -- bottom-left, clear of the card hand
 	skipBtn.Size = UDim2.fromOffset(140, 42)
 	skipBtn.BackgroundColor3 = Color3.fromRGB(245, 196, 63)
 	skipBtn.Font = Enum.Font.GothamBlack

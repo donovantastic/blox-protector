@@ -18,6 +18,7 @@ local Sounds: { [string]: Sound } = {
 	defeat = { id = "rbxassetid://0", volume = 0.75 },
 	uiClick = { id = "rbxasset://sounds/electronicpingshort.wav", volume = 0.25 },
 	bossSpawn = { id = "rbxassetid://0", volume = 0.8 },
+	chaChing = { id = "rbxassetid://0", volume = 0.6 }, -- ATM payout (swap in a real cash-register id)
 }
 
 return Sounds
