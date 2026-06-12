@@ -163,7 +163,7 @@ local function buildPinEnemy(
 	-- Reflectance gives it a glossy candy shine.
 	local body = piece(
 		"Body",
-		Vector3.new(2.3, 3.4, 1.5), -- same footprint as the old box body, rounded into a cylinder
+		Vector3.new(2.7, 3.4, 1.5), -- a wider spool core (X = width), rounded into a cylinder
 		CFrame.new(0, 0, 0),
 		RED,
 		Enum.Material.SmoothPlastic
@@ -527,7 +527,7 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 	-- upright. A touch of Reflectance gives the plastic a glossy candy shine.
 	local body = piece(
 		"Body",
-		Vector3.new(2.3, 3.4, 1.5), -- same footprint as the old box body, rounded into a cylinder
+		Vector3.new(2.7, 3.4, 1.5), -- a wider spool core (X = width), rounded into a cylinder
 		CFrame.new(0, 0, 0),
 		RED,
 		Enum.Material.SmoothPlastic
