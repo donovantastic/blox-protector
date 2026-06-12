@@ -612,6 +612,11 @@ local function buildModel(def: Enemies.Enemy): (Model, BasePart)
 				d.CanCollide = false
 			end
 		end
+		-- bosses set `scale` in the config — grow real models the same way the
+		-- graybox fallbacks already do (templates are built at base size)
+		if def.scale then
+			clone:ScaleTo(def.scale)
+		end
 		return clone, clone.PrimaryPart :: BasePart
 	end
 
