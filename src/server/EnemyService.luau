@@ -168,7 +168,7 @@ local function buildPinEnemy(
 		RED,
 		Enum.Material.SmoothPlastic
 	)
-	body.Reflectance = 0.12
+	body.Reflectance = 0.24
 	local bodyMesh = Instance.new("CylinderMesh")
 	bodyMesh.Parent = body
 	local collar = piece(
@@ -179,7 +179,7 @@ local function buildPinEnemy(
 		Enum.Material.SmoothPlastic,
 		Enum.PartType.Cylinder
 	)
-	collar.Reflectance = 0.12
+	collar.Reflectance = 0.24
 	local skirt = piece(
 		"Skirt",
 		Vector3.new(0.8, 3.1, 3.1),
@@ -188,7 +188,7 @@ local function buildPinEnemy(
 		Enum.Material.SmoothPlastic,
 		Enum.PartType.Cylinder
 	)
-	skirt.Reflectance = 0.12
+	skirt.Reflectance = 0.24
 
 	-- cartoon face on the front (-Z is the direction it walks, so it leads with its face)
 	local FZ = -0.78
@@ -247,7 +247,7 @@ local function buildPinEnemy(
 			STEEL,
 			Enum.Material.Metal
 		)
-		needle.Reflectance = 0.25 -- a steel gleam
+		needle.Reflectance = 0.45 -- a bright steel gleam
 	else
 		-- steel drill-spike on top: stacked discs of shrinking radius, like the Dev Drill
 		local STEEL_TIP = Color3.fromRGB(225, 232, 245)
@@ -532,7 +532,7 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 		RED,
 		Enum.Material.SmoothPlastic
 	)
-	body.Reflectance = 0.12
+	body.Reflectance = 0.24
 	local bodyMesh = Instance.new("CylinderMesh")
 	bodyMesh.Parent = body
 	local collar = piece(
@@ -543,7 +543,7 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 		Enum.Material.SmoothPlastic,
 		Enum.PartType.Cylinder
 	)
-	collar.Reflectance = 0.12
+	collar.Reflectance = 0.24
 	local skirt = piece(
 		"Skirt",
 		Vector3.new(0.8, 3.1, 3.1),
@@ -552,7 +552,7 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 		Enum.Material.SmoothPlastic,
 		Enum.PartType.Cylinder
 	)
-	skirt.Reflectance = 0.12
+	skirt.Reflectance = 0.24
 
 	-- normal smug face (eyes, one raised brow, a smile) — same as the tank pin
 	local FZ = -0.78
@@ -607,7 +607,7 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 		STEEL,
 		Enum.Material.Metal
 	)
-	needle.Reflectance = 0.25 -- a steel gleam
+	needle.Reflectance = 0.45 -- a bright steel gleam
 
 	-- four FIRE-ABLE limbs (2 arms up top, 2 legs at the base). Named Limb1..4 so they
 	-- can be detached one at a time as it shoots them off.
