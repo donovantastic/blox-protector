@@ -123,9 +123,11 @@ local function buildPinEnemy(
 	attachment: string?, -- nil | "gun" | "rockets" | "storm" | "drill" | "medic" | "kitty" — gear
 	bare: boolean? -- true = skip the mech (tracks/battery/drill spike); just a clean pin + needle
 ): (Model, BasePart)
-	local RED = bodyColor or Color3.fromRGB(225, 35, 35) -- enemies red; friendly allies pass blue
+	local RED = bodyColor or Color3.fromRGB(235, 40, 45) -- enemies red; friendly allies pass blue
 	local BLACK = Color3.fromRGB(20, 20, 22)
 	local STEEL = Color3.fromRGB(150, 165, 195)
+	-- rotates a Cylinder part (its round faces point along X) so it stands upright along Y
+	local UPRIGHT = CFrame.Angles(0, 0, math.rad(90))
 	local model = Instance.new("Model")
 	model.Name = modelName
 
@@ -152,31 +154,40 @@ local function buildPinEnemy(
 		return p
 	end
 
-	-- red flared body: a tall core, a wide collar up top, a wide skirt at the base
+	-- red flared spool: a round core cylinder, a wide collar disc up top, a wide skirt
+	-- disc at the base. Cylinders (not boxes) give it a smooth, rounded silhouette, and a
+	-- little Reflectance makes the plastic read as glossy candy-red instead of flat matte.
 	local body = piece(
 		"Body",
-		Vector3.new(2.3, 3.4, 1.5),
-		CFrame.new(0, 0, 0),
+		Vector3.new(3.4, 2.2, 2.2), -- length(=height once upright) x diameter x diameter
+		CFrame.new(0, 0, 0) * UPRIGHT,
 		RED,
-		Enum.Material.SmoothPlastic
+		Enum.Material.SmoothPlastic,
+		Enum.PartType.Cylinder
 	)
-	piece(
+	body.Reflectance = 0.12
+	local collar = piece(
 		"Collar",
-		Vector3.new(2.9, 0.55, 1.85),
-		CFrame.new(0, 1.45, 0),
+		Vector3.new(0.55, 2.9, 2.9),
+		CFrame.new(0, 1.45, 0) * UPRIGHT,
 		RED,
-		Enum.Material.SmoothPlastic
+		Enum.Material.SmoothPlastic,
+		Enum.PartType.Cylinder
 	)
-	piece(
+	collar.Reflectance = 0.12
+	local skirt = piece(
 		"Skirt",
-		Vector3.new(3.1, 0.8, 2.0),
-		CFrame.new(0, -1.3, 0),
+		Vector3.new(0.8, 3.1, 3.1),
+		CFrame.new(0, -1.3, 0) * UPRIGHT,
 		RED,
-		Enum.Material.SmoothPlastic
+		Enum.Material.SmoothPlastic,
+		Enum.PartType.Cylinder
 	)
+	skirt.Reflectance = 0.12
 
-	-- cartoon face on the front (-Z is the direction it walks, so it leads with its face)
-	local FZ = -0.78
+	-- cartoon face on the front (-Z is the direction it walks, so it leads with its face).
+	-- Pushed out to -1.0 so it sits proud of the now-rounded body instead of sinking in.
+	local FZ = -1.0
 	piece(
 		"EyeL",
 		Vector3.new(0.32, 0.42, 0.12),
@@ -225,17 +236,17 @@ local function buildPinEnemy(
 	-- the mech: a normal pin has a drill-spike, tank tracks, and a battery. A "bare"
 	-- pin skips all that and just gets a simple needle on top (a clean classic pin).
 	if bare then
-		piece(
+		local needle = piece(
 			"Needle",
 			Vector3.new(0.16, 2.6, 0.16),
 			CFrame.new(0, 3.0, 0),
 			STEEL,
 			Enum.Material.Metal
 		)
+		needle.Reflectance = 0.25 -- a steel gleam
 	else
 		-- steel drill-spike on top: stacked discs of shrinking radius, like the Dev Drill
 		local STEEL_TIP = Color3.fromRGB(225, 232, 245)
-		local upright = CFrame.Angles(0, 0, math.rad(90))
 		local radii = { 0.5, 0.37, 0.25, 0.13 }
 		local segHeight = 0.4
 		local sy = 1.75 -- just above the collar
@@ -243,7 +254,7 @@ local function buildPinEnemy(
 			piece(
 				"Spike" .. i,
 				Vector3.new(segHeight, r * 2, r * 2),
-				CFrame.new(0, sy + segHeight / 2, 0) * upright,
+				CFrame.new(0, sy + segHeight / 2, 0) * UPRIGHT,
 				STEEL:Lerp(STEEL_TIP, (i - 1) / #radii * 0.6),
 				Enum.Material.Metal,
 				Enum.PartType.Cylinder
@@ -472,10 +483,12 @@ end
 -- The classic "Pin" (BFDI-style): red spool body, smug face, a long thin needle on
 -- top, and four fire-able limbs — no tank gear. It shoots its own limbs at enemies.
 local function buildClassicPin(modelName: string, scale: number?): (Model, BasePart)
-	local RED = Color3.fromRGB(230, 30, 30)
+	local RED = Color3.fromRGB(235, 40, 45)
 	local BLACK = Color3.fromRGB(20, 20, 22)
 	local WHITE = Color3.fromRGB(245, 245, 250)
 	local STEEL = Color3.fromRGB(190, 198, 210)
+	-- rotates a Cylinder part (its round faces point along X) so it stands upright along Y
+	local UPRIGHT = CFrame.Angles(0, 0, math.rad(90))
 	local model = Instance.new("Model")
 	model.Name = modelName
 
@@ -502,31 +515,39 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 		return p
 	end
 
-	-- red spool body
+	-- red spool body: a round core cylinder with a wide collar disc up top and a wide
+	-- skirt disc at the base. A touch of Reflectance gives the plastic a glossy candy shine.
 	local body = piece(
 		"Body",
-		Vector3.new(2.3, 3.4, 1.5),
-		CFrame.new(0, 0, 0),
+		Vector3.new(3.4, 2.2, 2.2), -- length(=height once upright) x diameter x diameter
+		CFrame.new(0, 0, 0) * UPRIGHT,
 		RED,
-		Enum.Material.SmoothPlastic
+		Enum.Material.SmoothPlastic,
+		Enum.PartType.Cylinder
 	)
-	piece(
+	body.Reflectance = 0.12
+	local collar = piece(
 		"Collar",
-		Vector3.new(2.9, 0.55, 1.85),
-		CFrame.new(0, 1.45, 0),
+		Vector3.new(0.55, 2.9, 2.9),
+		CFrame.new(0, 1.45, 0) * UPRIGHT,
 		RED,
-		Enum.Material.SmoothPlastic
+		Enum.Material.SmoothPlastic,
+		Enum.PartType.Cylinder
 	)
-	piece(
+	collar.Reflectance = 0.12
+	local skirt = piece(
 		"Skirt",
-		Vector3.new(3.1, 0.8, 2.0),
-		CFrame.new(0, -1.3, 0),
+		Vector3.new(0.8, 3.1, 3.1),
+		CFrame.new(0, -1.3, 0) * UPRIGHT,
 		RED,
-		Enum.Material.SmoothPlastic
+		Enum.Material.SmoothPlastic,
+		Enum.PartType.Cylinder
 	)
+	skirt.Reflectance = 0.12
 
-	-- normal smug face (eyes, one raised brow, a smile) — same as the tank pin
-	local FZ = -0.78
+	-- normal smug face (eyes, one raised brow, a smile) — same as the tank pin.
+	-- Pushed out to -1.0 so it sits proud of the now-rounded body instead of sinking in.
+	local FZ = -1.0
 	piece(
 		"EyeL",
 		Vector3.new(0.32, 0.42, 0.12),
@@ -571,7 +592,14 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 	)
 
 	-- a long thin needle on top
-	piece("Needle", Vector3.new(0.16, 2.6, 0.16), CFrame.new(0, 3.0, 0), STEEL, Enum.Material.Metal)
+	local needle = piece(
+		"Needle",
+		Vector3.new(0.16, 2.6, 0.16),
+		CFrame.new(0, 3.0, 0),
+		STEEL,
+		Enum.Material.Metal
+	)
+	needle.Reflectance = 0.25 -- a steel gleam
 
 	-- four FIRE-ABLE limbs (2 arms up top, 2 legs at the base). Named Limb1..4 so they
 	-- can be detached one at a time as it shoots them off.
