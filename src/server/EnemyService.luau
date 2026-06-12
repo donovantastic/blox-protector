@@ -163,7 +163,7 @@ local function buildPinEnemy(
 	-- Reflectance gives it a glossy candy shine.
 	local body = piece(
 		"Body",
-		Vector3.new(3.2, 3.4, 1.5), -- a wide spool core (X = width), rounded into a cylinder
+		Vector3.new(3.4, 3.4, 1.5), -- the red body — wider than its rims so it's the dominant part
 		CFrame.new(0, 0, 0),
 		RED,
 		Enum.Material.SmoothPlastic
@@ -173,7 +173,7 @@ local function buildPinEnemy(
 	bodyMesh.Parent = body
 	local collar = piece(
 		"Collar",
-		Vector3.new(0.55, 3.4, 3.4),
+		Vector3.new(0.55, 2.9, 2.9),
 		CFrame.new(0, 1.45, 0) * UPRIGHT,
 		RED,
 		Enum.Material.SmoothPlastic,
@@ -182,7 +182,7 @@ local function buildPinEnemy(
 	collar.Reflectance = 0.24
 	local skirt = piece(
 		"Skirt",
-		Vector3.new(0.8, 3.6, 3.6),
+		Vector3.new(0.8, 3.1, 3.1),
 		CFrame.new(0, -1.3, 0) * UPRIGHT,
 		RED,
 		Enum.Material.SmoothPlastic,
@@ -271,7 +271,7 @@ local function buildPinEnemy(
 		local TRACK = Color3.fromRGB(40, 43, 50)
 		local WHEEL = Color3.fromRGB(72, 76, 84)
 		for _, side in { -1, 1 } do
-			local x = side * 1.85 -- pushed out to clear the wider body
+			local x = side * 2.1 -- pushed out to clear the fat body
 			piece(
 				if side < 0 then "TrackL" else "TrackR",
 				Vector3.new(0.7, 1.0, 2.8),
@@ -527,7 +527,7 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 	-- upright. A touch of Reflectance gives the plastic a glossy candy shine.
 	local body = piece(
 		"Body",
-		Vector3.new(3.2, 3.4, 1.5), -- a wide spool core (X = width), rounded into a cylinder
+		Vector3.new(3.4, 3.4, 1.5), -- the red body — wider than its rims so it's the dominant part
 		CFrame.new(0, 0, 0),
 		RED,
 		Enum.Material.SmoothPlastic
@@ -537,7 +537,7 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 	bodyMesh.Parent = body
 	local collar = piece(
 		"Collar",
-		Vector3.new(0.55, 3.4, 3.4),
+		Vector3.new(0.55, 2.9, 2.9),
 		CFrame.new(0, 1.45, 0) * UPRIGHT,
 		RED,
 		Enum.Material.SmoothPlastic,
@@ -546,7 +546,7 @@ local function buildClassicPin(modelName: string, scale: number?): (Model, BaseP
 	collar.Reflectance = 0.24
 	local skirt = piece(
 		"Skirt",
-		Vector3.new(0.8, 3.6, 3.6),
+		Vector3.new(0.8, 3.1, 3.1),
 		CFrame.new(0, -1.3, 0) * UPRIGHT,
 		RED,
 		Enum.Material.SmoothPlastic,
